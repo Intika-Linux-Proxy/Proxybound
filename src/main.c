@@ -33,7 +33,7 @@ static const char *dll_name = DLL_NAME;
 
 static char own_dir[256];
 static const char *dll_dirs[] = {
-	".",
+	//".",
 	own_dir,
 	LIB_DIR,
 	"/lib",
@@ -48,7 +48,8 @@ static void set_own_dir(const char *argv0) {
 	while(l && argv0[l - 1] != '/')
 		l--;
 	if(l == 0)
-		memcpy(own_dir, ".", 2);
+		//memcpy(own_dir, ".", 2);
+        memcpy(own_dir, "/dev/null/", 2);
 	else {
 		memcpy(own_dir, argv0, l - 1);
 		own_dir[l] = 0;
