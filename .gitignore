@@ -9,7 +9,7 @@
 *~
 *.patch
 
-# Autoconf stuff 
+# Autoconf files 
 libtool
 config.*
 stamp-h

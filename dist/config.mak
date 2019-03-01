@@ -1,7 +1,7 @@
-### config.mak template for proxychains
-#######################################
+### config.mak template for proxybound
+######################################
 
-# just copy into proxychains root dir and adapt to your needs.
+# just copy into proxybound root dir and adapt to your needs.
 
 prefix = /usr/local/
 libdir = $(prefix)/lib

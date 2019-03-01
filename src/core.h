@@ -1,10 +1,11 @@
 /***************************************************************************
-                          core.h  -  description
-                             -------------------
+                           core.h
+                           ------
     begin                : Tue May 14 2002
-    copyright          :  netcreature (C) 2002
-    email                 : netcreature@users.sourceforge.net
+    copyright            : netcreature (C) 2002
+    email                : netcreature@users.sourceforge.net
  ***************************************************************************
+ *     GPL *
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -80,7 +81,7 @@ int connect_proxy_chain (int sock, ip_type target_ip, unsigned short target_port
 			 proxy_data * pd, unsigned int proxy_count, chain_type ct,
 			 unsigned int max_chain );
 
-void proxychains_write_log(char *str, ...);
+void proxybound_write_log(char *str, ...);
 
 typedef int (*connect_t)(int, const struct sockaddr *, socklen_t);
 typedef struct hostent* (*gethostbyname_t)(const char *);
@@ -122,5 +123,5 @@ void core_unload(void);
 #endif
 
 //RcB: DEP "core.c"
-//RcB: DEP "libproxychains.c"
+//RcB: DEP "libproxybound.c"
 //RcB: LINK "-Wl,--no-as-needed -ldl -lpthread"

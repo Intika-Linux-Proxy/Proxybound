@@ -1,5 +1,5 @@
 #
-# Makefile for proxychains (requires GNU make), stolen from musl
+# Makefile for proxybound
 #
 # Use config.mak to override any of the following variables.
 # Do not make changes here.
@@ -15,7 +15,7 @@ sysconfdir=$(prefix)/etc
 
 SRCS = $(sort $(wildcard src/*.c))
 OBJS = $(SRCS:.c=.o)
-LOBJS = src/core.o src/common.o src/libproxychains.o src/shm.o \
+LOBJS = src/core.o src/common.o src/libproxybound.o src/shm.o \
         src/allocator_thread.o src/ip_type.o src/stringdump.o \
         src/hostentdb.o src/hash.o
 
@@ -32,11 +32,11 @@ INSTALL_FLAGS = -D -m
 
 -include config.mak
 
-LDSO_PATHNAME = libproxychains4.$(LDSO_SUFFIX)
+LDSO_PATHNAME = libproxybound.$(LDSO_SUFFIX)
 
 SHARED_LIBS = $(LDSO_PATHNAME)
 ALL_LIBS = $(SHARED_LIBS)
-PXCHAINS = proxychains4
+PXCHAINS = proxybound
 ALL_TOOLS = $(PXCHAINS)
 
 
@@ -48,7 +48,7 @@ all: $(ALL_LIBS) $(ALL_TOOLS)
 
 install-config:
 	install -d $(DESTDIR)/$(sysconfdir)
-	install $(INSTALL_FLAGS) 644 src/proxychains.conf $(DESTDIR)/$(sysconfdir)/
+	install $(INSTALL_FLAGS) 644 src/proxybound.conf $(DESTDIR)/$(sysconfdir)/
 
 install: 
 	install -d $(DESTDIR)/$(bindir)/ $(DESTDIR)/$(libdir)/

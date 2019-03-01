@@ -1,8 +1,8 @@
 /***************************************************************************
-                          core.c  -  description
-                             -------------------
+                           core.c
+                           ------
     begin                : Tue May 14 2002
-    copyright            :  netcreature (C) 2002
+    copyright            : netcreature (C) 2002
     email                : netcreature@users.sourceforge.net
  ***************************************************************************
  *     GPL *
@@ -42,7 +42,7 @@
 
 extern int tcp_read_time_out;
 extern int tcp_connect_time_out;
-extern int proxychains_quiet_mode;
+extern int proxybound_quiet_mode;
 extern unsigned int remote_dns_subnet;
 
 static int poll_retry(struct pollfd *fds, nfds_t nfsd, int timeout) {
@@ -105,10 +105,10 @@ static void encode_base_64(char *src, char *dest, int max_len) {
 	*dest++ = 0;
 }
 
-void proxychains_write_log(char *str, ...) {
+void proxybound_write_log(char *str, ...) {
 	char buff[1024*20];
 	va_list arglist;
-	if(!proxychains_quiet_mode) {
+	if(!proxybound_quiet_mode) {
 		va_start(arglist, str);
 		vsnprintf(buff, sizeof(buff), str, arglist);
 		va_end(arglist);
@@ -210,7 +210,7 @@ static int tunnel_to(int sock, ip_type ip, unsigned short port, proxy_type pt, c
 	size_t passlen = strlen(pass);
 
 	if(ulen > 0xFF || passlen > 0xFF || dns_len > 0xFF) {
-		proxychains_write_log(LOG_PREFIX "error: maximum size of 255 for user/pass or domain name!\n");
+		proxybound_write_log(LOG_PREFIX "error: maximum size of 255 for user/pass or domain name!\n");
 		goto err;
 	}
 
@@ -437,7 +437,7 @@ static int start_chain(int *fd, proxy_data * pd, char *begin_mark) {
 		goto error;
 	
 	pc_stringfromipv4(&pd->ip.octet[0], ip_buf);
-	proxychains_write_log(LOG_PREFIX "%s " TP " %s:%d ",
+	proxybound_write_log(LOG_PREFIX "%s " TP " %s:%d ",
 			      begin_mark, ip_buf, htons(pd->port));
 	pd->ps = PLAY_STATE;
 	memset(&addr, 0, sizeof(addr));
@@ -451,7 +451,7 @@ static int start_chain(int *fd, proxy_data * pd, char *begin_mark) {
 	pd->ps = BUSY_STATE;
 	return SUCCESS;
 	error1:
-	proxychains_write_log(TP " timeout\n");
+	proxybound_write_log(TP " timeout\n");
 	error:
 	if(*fd != -1)
 		close(*fd);
@@ -528,7 +528,7 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 		hostname = ip_buf;
 	}
 
-	proxychains_write_log(TP " %s:%d ", hostname, htons(pto->port));
+	proxybound_write_log(TP " %s:%d ", hostname, htons(pto->port));
 	retcode = tunnel_to(ns, pto->ip, pto->port, pfrom->pt, pfrom->user, pfrom->pass);
 	switch (retcode) {
 		case SUCCESS:
@@ -536,12 +536,12 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 			break;
 		case BLOCKED:
 			pto->ps = BLOCKED_STATE;
-			proxychains_write_log("<--denied\n");
+			proxybound_write_log("<--denied\n");
 			close(ns);
 			break;
 		case SOCKET_ERROR:
 			pto->ps = DOWN_STATE;
-			proxychains_write_log("<--socket error or timeout!\n");
+			proxybound_write_log("<--socket error or timeout!\n");
 			close(ns);
 			break;
 	}
@@ -582,7 +582,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				}
 				p1 = p2;
 			}
-			//proxychains_write_log(TP);
+			//proxybound_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
 			if(SUCCESS != chain_step(ns, p1, p3))
@@ -609,7 +609,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				}
 				p1 = p2;
 			}
-			//proxychains_write_log(TP);
+			//proxybound_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
 			if(SUCCESS != chain_step(ns, p1, p3))
@@ -634,7 +634,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				}
 				p1 = p2;
 			}
-			//proxychains_write_log(TP);
+			//proxybound_write_log(TP);
 			p3->ip = target_ip;
 			p3->port = target_port;
 			if(SUCCESS != chain_step(ns, p1, p3))
@@ -642,7 +642,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 
 	}
 
-	proxychains_write_log(TP " OK\n");
+	proxybound_write_log(TP " OK\n");
 	dup2(ns, sock);
 	close(ns);
 	return 0;
@@ -653,7 +653,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 	return -1;
 
 	error_more:
-	proxychains_write_log("\n!!!need more proxies!!!\n");
+	proxybound_write_log("\n!!!need more proxies!!!\n");
 	error_strict:
 	PDEBUG("error\n");
 	

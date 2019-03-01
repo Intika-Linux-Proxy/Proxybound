@@ -1,121 +1,67 @@
-ProxyChains ver 4.3 README
-==========================
+ProxyBound v4.5
+===============
 
-  ProxyChains is a UNIX program, that hooks network-related libc functions
+  ProxyBound is a UNIX program, that hooks network-related libc functions
   in dynamically linked programs via a preloaded DLL and redirects the
   connections through SOCKS4a/5 or HTTP proxies.
-
-*********** ATTENTION ***********
+  
+  It's based on proxychains-ng by rofl0r
+  
+How it works:
+=============
 
   this program works only on dynamically linked programs.
-  also both proxychains and the program to call must use
+  also both proxybound and the program to call must use
   the same dynamic linker (i.e. same libc).
   why ? because in order to hook to libc functions like
   connect(), dynamic loader facilities are used, namely
   dl_sym() and LD_PRELOAD.
 
-*********************************
+Install:
+========
 
-*** Installation ***
-
-  # needs a working C compiler, preferably gcc
   ./configure
   make
   [optional] sudo make install
 
-  if you dont install, you can use proxychains from the build directory
-  like this: ./proxychains4 -f src/proxychains.conf telnet google.com 80
+  if you dont install, you can use proxybound from the build directory
+  like this: ./proxybound -f src/proxybound.conf telnet google.com 80
 
 Changelog:
-----------
+==========
 
-Version 4.3:
-- fixes programs that do dns-lookups in child processes (fork()ed),
-  like irssi. to achieve this, support for compilation without pthreads
-  was sacrified.
-- fixes thread safety for gethostent() calls.
-- improved DNS handling speed, since hostent db is cached.
+  Version 4.5:
+  - Changing the name to ProxyBound
 
-Version 4.2:
-- fixes compilation issues with ubuntu 12.04 toolchain
-- fixes segfault in rare codepath
-
-Version 4.1 
-- support for mac os x (all archs)
-- all internal functions are threadsafe when compiled with -DTHREAD_SAFE 
-  (default).
-
-Version 4.0
-- replaced dnsresolver script (which required a dynamically linked "dig" 
-  binary to be present) with remote DNS lookup.
-  this speeds up any operation involving DNS, as the old script had to use TCP.
-  additionally it allows to use .onion urls when used with TOR.
-- removed broken autoconf build system with a simple Makefile.
-  there's a ./configure script though for convenience.
-  it also adds support for a config file passed via command line switches/
-  environment variables.
-
-Version 3.0
-- support for DNS resolving through proxy 
-  supports SOCKS4, SOCKS5 and HTTP CONNECT proxy servers.
-  Auth-types: socks - "user/pass" , http - "basic".
-
-When to use it ?
-1) When the only way to get "outside" from your LAN is through proxy server.
-2) To get out from behind restrictive firewall which filters outgoing ports.
-3) To use two (or more) proxies in chain:
-	like: your_host <--> proxy1 <--> proxy2 <--> target_host
-4) To "proxify" some program with no proxy support built-in (like telnet)
-5) Access intranet from outside via proxy.
-6) To use DNS behind proxy.
-7) To access hidden tor onion services.
-
-Some cool features:
-
-* This program can mix different proxy types in the same chain
-	like: your_host <-->socks5 <--> http <--> socks4 <--> target_host
-* Different chaining options supported
-	random order from the list ( user defined length of chain ).
-	exact order  (as they appear in the list )
-	dynamic order (smart exclude dead proxies from chain)
-* You can use it with any TCP client application, even network scanners
-	yes, yes - you can make portscan via proxy (or chained proxies)
-	for example with Nmap scanner by fyodor (www.insecire.org/nmap).
-	proxychains nmap -sT -PO -p 80 -iR  (find some webservers through proxy)
-* You can use it with servers, like squid, sendmail, or whatever.
-* DNS resolving through proxy.
-
+  Version 4.4:
+  - Import security issue fix CVE-2015-3887 
 
 Configuration:
---------------
+==============
 
-proxychains looks for config file in following order:
-1)	file listed in environment variable ${PROXYCHAINS_CONF_FILE} or
-	provided as a -f argument to proxychains script or binary.
-2)	./proxychains.conf
-3)	$(HOME)/.proxychains/proxychains.conf
-4)	/etc/proxychains.conf  **
+  Proxybound config file in following order:
 
-**see more in /etc/proxychains.conf
-
-Usage Example:
-
-	$ proxychains telnet targethost.com
-
-in this example it will run telnet through proxy(or chained proxies)
-specified by proxychains.conf
+  1)	File listed in environment variable ${PROXYBOUND_CONF_FILE} or
+    	provided as a -f argument to proxybound script or binary.
+  2)	./proxybound.conf
+  3)	$(HOME)/.proxybound/proxybound.conf
+  4)	/etc/proxybound.conf
 
 Usage Example:
+==============
 
-      	$ proxychains -f /etc/proxychains-other.conf targethost2.com
+  $ proxybound telnet targethost.com
 
-in this example it will use different configuration file then proxychains.conf 
-to connect to targethost2.com host.
+  in this example it will run telnet through proxy(or chained proxies)
+  specified by proxybound.conf
 
-Usage Example:
+  $ proxybound -f /etc/proxybound-other.conf targethost2.com
 
-	$ proxyresolv targethost.com
+  in this example it will use different configuration file then proxybound.conf 
+  to connect to targethost2.com host.
 
-in this example it will resolve targethost.com through proxy(or chained proxies)
-specified by proxychains.conf
+  $ proxyresolv targethost.com
+
+  in this example it will resolve targethost.com through proxy(or chained proxies)
+  specified by proxybound.conf
 

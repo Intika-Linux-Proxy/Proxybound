@@ -1,4 +1,7 @@
-/*   (C) 2011, 2012 rofl0r
+/***************************************************************************
+ *                                                                         *
+ *   (C) 2019 intika                                                       *
+ *   (C) 2011, 2012 rofl0r                                                 *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -23,9 +26,9 @@
 
 static int usage(char **argv) {
 	printf("\nUsage:\t%s -q -f config_file program_name [arguments]\n"
-	       "\t-q makes proxychains quiet - this overrides the config setting\n"
+	       "\t-q makes proxybound quiet - this overrides the config setting\n"
 	       "\t-f allows to manually specify a configfile to use\n"
-	       "\tfor example : proxychains telnet somehost.com\n" "More help in README file\n\n", argv[0]);
+	       "\tfor example : proxybound telnet somehost.com\n" "More help in README file\n\n", argv[0]);
 	return EXIT_FAILURE;
 }
 
@@ -94,11 +97,11 @@ int main(int argc, char *argv[]) {
 	if(!quiet)
 		fprintf(stderr, LOG_PREFIX "config file found: %s\n", path);
 
-	/* Set PROXYCHAINS_CONF_FILE to get proxychains lib to use new config file. */
-	setenv(PROXYCHAINS_CONF_FILE_ENV_VAR, path, 1);
+	/* Set PROXYBOUND_CONF_FILE to get proxybound lib to use new config file. */
+	setenv(PROXYBOUND_CONF_FILE_ENV_VAR, path, 1);
 
 	if(quiet)
-		setenv(PROXYCHAINS_QUIET_MODE_ENV_VAR, "1", 1);
+		setenv(PROXYBOUND_QUIET_MODE_ENV_VAR, "1", 1);
 
 
 	// search DLL
@@ -132,7 +135,7 @@ int main(int argc, char *argv[]) {
 	putenv("DYLD_FORCE_FLAT_NAMESPACE=1");
 #endif
 	execvp(argv[start_argv], &argv[start_argv]);
-	perror("proxychains can't load process....");
+	perror("proxybound can't load process....");
 
 	return EXIT_FAILURE;
 }
