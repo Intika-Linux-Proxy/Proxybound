@@ -15,6 +15,11 @@ char *get_config_path(char* default_path, char* pbuf, size_t bufsize) {
 	char *path = default_path;
 	if(check_path(path))
 		goto have;
+    
+	if (!pbuf) {
+        perror("couldnt find configuration file");
+        exit(1);
+    }
 	
 	// priority 1: env var PROXYBOUND_CONF_FILE
 	path = getenv(PROXYBOUND_CONF_FILE_ENV_VAR);
