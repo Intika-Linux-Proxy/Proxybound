@@ -1,4 +1,4 @@
-ProxyBound v4.5
+ProxyBound v4.7
 ===============
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
@@ -29,6 +29,12 @@ Install:
 
 Changelog:
 ==========
+
+  Version 4.7:
+  - Fix chrome compatibility
+
+  Version 4.6:
+  - Code cleanning & update
 
   Version 4.5:
   - Changing the name to ProxyBound
