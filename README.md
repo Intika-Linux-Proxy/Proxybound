@@ -1,11 +1,11 @@
-ProxyBound v4.7
+ProxyBound v4.9
 ===============
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
   in dynamically linked programs via a preloaded DLL and redirects the
   connections through SOCKS4a/5 or HTTP proxies.
   
-  It's based on proxychains-ng by rofl0r
+  It's based on proxychains-ng by rofl0r & proxychains by haad
   
 How it works:
 =============
@@ -16,6 +16,16 @@ How it works:
   why ? because in order to hook to libc functions like
   connect(), dynamic loader facilities are used, namely
   dl_sym() and LD_PRELOAD.
+  
+Used environment variable:
+==========================
+
+- PROXYBOUND_CONF_FILE:     Path to config file
+- PROXYBOUND_QUIET_MODE:    Quiet mode (1 or 0)
+- PROXYBOUND_SOCKS5_HOST:   Specify unique socks 5 proxy to use 
+- PROXYBOUND_SOCKS5_PORT:   Socks 5 port
+- PROXYBOUND_FORCE_DNS:     Force dns requests through (1 or 0)
+- PROXYBOUND_ALLOW_LEAKS:   Not yet implemented (Allow unproxyfied protocols "UDP/ICMP/RAW")
 
 Install:
 ========
@@ -29,6 +39,12 @@ Install:
 
 Changelog:
 ==========
+
+  Version 4.9:
+  - Import simple SOCKS5 proxy mode from https://github.com/haad/proxychains
+
+  Version 4.8:
+  - Updates with some features from https://github.com/haad/proxychains
 
   Version 4.7:
   - Fix chrome compatibility
@@ -56,18 +72,22 @@ Configuration:
 Usage Example:
 ==============
 
+  $ export PROXYBOUND_QUIET_MODE="1"
+  $ export LD_PRELOAD=/usr/local/lib/libproxybound.so
+  $ export PROXYBOUND_CONF_FILE=/etc/proxybound.conf
+  $ telnet targethost.com
+  
+  In this example it will run telnet through proxy without using proxybound binary
+
   $ proxybound telnet targethost.com
 
-  in this example it will run telnet through proxy(or chained proxies)
-  specified by proxybound.conf
+  In this example it will run telnet through proxy(or chained proxies) specified by proxybound.conf
 
   $ proxybound -f /etc/proxybound-other.conf targethost2.com
 
-  in this example it will use different configuration file then proxybound.conf 
-  to connect to targethost2.com host.
+  In this example it will use different configuration file then proxybound.conf to connect to targethost2.com host.
 
   $ proxyresolv targethost.com
 
-  in this example it will resolve targethost.com through proxy(or chained proxies)
-  specified by proxybound.conf
+  In this example it will resolve targethost.com through proxy(or chained proxies) specified by proxybound.conf
 

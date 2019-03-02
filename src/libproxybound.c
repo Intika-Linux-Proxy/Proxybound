@@ -1,11 +1,14 @@
 /***************************************************************************
                            libproxybound.c
                            ---------------
-    begin                : Tue May 14 2002
-    copyright            : netcreature (C) 2002
-    email                : netcreature@users.sourceforge.net
+
+     copyright: intika      (C) 2019 intika@librefox.org
+     copyright: rofl0r      (C) 2012 https://github.com/rofl0r
+     copyright: haad        (C) 2012 https://github.com/haad
+     copyright: netcreature (C) 2002 netcreature@users.sourceforge.net
+    
  ***************************************************************************
- *     GPL *
+ *   GPL                                                                   *
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -31,7 +34,6 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-
 
 #include "core.h"
 #include "common.h"
@@ -62,13 +64,17 @@ int proxybound_resolver = 0;
 localaddr_arg localnet_addr[MAX_LOCALNET];
 size_t num_localnet_addr = 0;
 unsigned int remote_dns_subnet = 224;
-
 #ifdef THREAD_SAFE
 pthread_once_t init_once = PTHREAD_ONCE_INIT;
 #endif
+
 static int init_l = 0;
 
+static void init_additional_settings(chain_type *ct);
+
 static inline void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_type * ct);
+
+static void manual_socks5_env(proxy_data * pd, unsigned int *proxy_count, chain_type * ct);
 
 static void* load_sym(char* symname, void* proxyfunc) {
 
@@ -94,6 +100,10 @@ static void* load_sym(char* symname, void* proxyfunc) {
 static void do_init(void) {
 	MUTEX_INIT(&internal_ips_lock, NULL);
 	MUTEX_INIT(&hostdb_lock, NULL);
+    
+    /* check for simple SOCKS5 proxy setup */
+	manual_socks5_env(proxybound_pd, &proxybound_proxy_count, &proxybound_ct);
+    
 	/* read the config file */
 	get_chain_data(proxybound_pd, &proxybound_proxy_count, &proxybound_ct);
 
@@ -135,6 +145,18 @@ static void gcc_init(void) {
 }
 #endif
 
+static void init_additional_settings(chain_type *ct) {
+	char *env;
+
+	tcp_read_time_out = 4 * 1000;
+	tcp_connect_time_out = 10 * 1000;
+	*ct = DYNAMIC_TYPE;
+
+	env = getenv(PROXYBOUND_QUIET_MODE_ENV_VAR);
+	if(env && *env == '1')
+		proxybound_quiet_mode = 1;
+}
+
 /* get configuration from config file */
 static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_type * ct) {
 	int count = 0, port_n = 0, list = 0;
@@ -148,16 +170,10 @@ static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_typ
 		return;
 
 	//Some defaults
-	tcp_read_time_out = 4 * 1000;
-	tcp_connect_time_out = 10 * 1000;
-	*ct = DYNAMIC_TYPE;
+    init_additional_settings(ct);
 	
 	env = get_config_path(getenv(PROXYBOUND_CONF_FILE_ENV_VAR), buff, sizeof(buff));
 	file = fopen(env, "r");
-
-	env = getenv(PROXYBOUND_QUIET_MODE_ENV_VAR);
-	if(env && *env == '1')
-		proxybound_quiet_mode = 1;
 
 	while(fgets(buff, sizeof(buff), file)) {
 		if(buff[0] != '\n' && buff[strspn(buff, " ")] != '#') {
@@ -264,6 +280,38 @@ static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_typ
 	}
 	fclose(file);
 	*proxy_count = count;
+	proxybound_got_chain_data = 1;
+}
+
+static void manual_socks5_env(proxy_data *pd, unsigned int *proxy_count, chain_type *ct) {
+	char *port_string;
+    char *host_string;
+
+	if(proxybound_got_chain_data)
+		return;
+
+	init_additional_settings(ct);
+
+    port_string = getenv(PROXYBOUND_SOCKS5_PORT_ENV_VAR);
+	if(!port_string)
+		return;
+    
+    host_string = getenv(PROXYBOUND_SOCKS5_HOST_ENV_VAR);
+    if(!host_string)
+        host_string = "127.0.0.1";
+
+	memset(pd, 0, sizeof(proxy_data));
+
+	pd[0].ps = PLAY_STATE;
+	pd[0].ip.as_int = (uint32_t) inet_addr(host_string);
+	pd[0].port = htons((unsigned short) strtol(port_string, NULL, 0));
+	pd[0].pt = SOCKS5_TYPE;
+	proxybound_max_chain = 1;
+
+	if(getenv(PROXYBOUND_FORCE_DNS_ENV_VAR) && (*getenv(PROXYBOUND_FORCE_DNS_ENV_VAR) == '1'))
+		proxybound_resolver = 1;
+
+	*proxy_count = 1;
 	proxybound_got_chain_data = 1;
 }
 
