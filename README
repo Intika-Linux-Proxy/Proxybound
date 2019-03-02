@@ -6,6 +6,8 @@ ProxyBound v4.9
   connections through SOCKS4a/5 or HTTP proxies.
   
   It's based on proxychains-ng by rofl0r & proxychains by haad
+  this program works only on dynamically linked programs. also both 
+  proxybound and the program to call must use the same dynamic linker (i.e. same libc) 
   
 How it works:
 =============
