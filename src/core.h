@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <unistd.h>
 #include <stdint.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -27,7 +26,35 @@
 #define BUFF_SIZE 8*1024  // used to read responses from proxies.
 #define     MAX_LOCALNET 64
 
-#include "ip_type.h"
+typedef union {
+	unsigned char octet[4];
+	uint32_t as_int;
+} ip_type;
+
+typedef struct {
+	uint32_t hash;
+	char* string;
+} string_hash_tuple;
+
+typedef struct {
+	uint32_t counter;
+	uint32_t capa;
+	string_hash_tuple** list;
+} internal_ip_lookup_table;
+
+extern internal_ip_lookup_table internal_ips;
+#ifdef THREAD_SAFE
+#include <pthread.h>
+extern pthread_mutex_t internal_ips_lock;
+extern pthread_mutex_t hostdb_lock;
+# define MUTEX_LOCK(x) pthread_mutex_lock(x)
+# define MUTEX_UNLOCK(x) pthread_mutex_unlock(x)
+# define MUTEX_INIT(x,y) pthread_mutex_init(x, y)
+#else
+# define MUTEX_LOCK(x)
+# define MUTEX_UNLOCK(x)
+# define MUTEX_INIT(x,y)
+#endif
 
 /*error codes*/
 typedef enum {
@@ -115,10 +142,13 @@ int proxy_getaddrinfo(const char *node, const char *service,
 		      const struct addrinfo *hints, struct addrinfo **res);
 void proxy_freeaddrinfo(struct addrinfo *res);
 
-void core_initialize(void);
-void core_unload(void);
+void pc_stringfromipv4(unsigned char *ip_buf_4_bytes, char *outbuf_16_bytes);
 
-#include "debug.h"
+#ifdef DEBUG
+# define PDEBUG(fmt, args...) do { fprintf(stderr,"DEBUG:"fmt, ## args); fflush(stderr); } while(0)
+#else
+# define PDEBUG(fmt, args...) do {} while (0)
+#endif
 
 #endif
 
