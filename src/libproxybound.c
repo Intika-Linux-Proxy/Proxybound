@@ -121,9 +121,9 @@ static void do_init(void) {
 	SETUP_SYM(gethostbyaddr);
 	SETUP_SYM(getnameinfo);
     
-	//SETUP_SYM(send);
-	//SETUP_SYM(sendto);
-	//SETUP_SYM(sendmsg);
+	SETUP_SYM(send);
+	SETUP_SYM(sendto);
+	SETUP_SYM(sendmsg);
 	
 	init_l = 1;
 }
@@ -453,24 +453,66 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 		errno = ECONNREFUSED;
 	return ret;
 }
-/*
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {
-    return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    //return 0;
-}
 
+//Already handled in connect ? 
 ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     return true_send(sockfd, buf, len, flags);
     //return 0;  
 }
 
-
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
     return true_sendmsg(sockfd, msg, flags);
+    //ssize_t ret;
+    //ret = true_sendmsg(sockfd, msg, flags);
+    //return ret;
     //return 0;  
-}*/
+}
 
-//ssize_t send(int sockfd, const void *buf, size_t len, int flags) {}
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {
+    //return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    //return 0;
+    
+    struct sockaddr_in *connaddr;
+    int sock_type = -1;
+    unsigned int sock_type_len = sizeof(sock_type);
+    
+    PDEBUG("got sendto request\n\n");
+
+    /* If the real connect doesn't exist, we're stuffed */
+    if (true_sendto == NULL) {
+        PDEBUG("unresolved symbol: sendto\n\n");
+        return(-1);
+    }
+    
+    connaddr = (struct sockaddr_in *) dest_addr;
+
+    /* Get the type of the socket */
+    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
+
+    PDEBUG("sendto: sin_family: %i\n\n", connaddr->sin_family);
+    PDEBUG("sendto: sockopt: %i\n\n", sock_type);
+    
+    /* If this a UDP socket with a non-local destination address  */
+    /* then we refuse it, since it is probably a DNS request      */
+    if (sock_type == SOCK_DGRAM) {
+        PDEBUG("sendto: is on a udp stream\n\n");
+        
+        char ip[256];
+        struct in_addr *p_addr_in;
+        
+        p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
+        inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
+
+        if (!(ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
+            PDEBUG("sendto: is on a udp stream with a non-local destination, may be a DNS request: rejecting.\n\n");
+        else
+            return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+                
+        return -1;
+    }
+    return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    //return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+}
 
 //TODO: DNS LEAK: OTHER RESOLVER FUNCTION
 //=======================================

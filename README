@@ -1,4 +1,4 @@
-ProxyBound v5.0
+ProxyBound v5.1
 ===============
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
@@ -36,6 +36,9 @@ Install:
 
 Changelog:
 ==========
+
+  Version 5.1:
+  - leak lock feature (send sendto sendmsg)
 
   Version 5.0:
   - Initial leak lock feature
