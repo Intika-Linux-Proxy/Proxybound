@@ -45,40 +45,16 @@
 #define     SOCKFAMILY(x)     (satosin(x)->sin_family)
 #define     MAX_CHAIN 512
 
-
-
-
-
-
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <dlfcn.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <strings.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/poll.h>
-#include <sys/time.h>
-#include <pwd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdarg.h>
-#include <resolv.h>
-
-
-
 connect_t true_connect;
 gethostbyname_t true_gethostbyname;
 getaddrinfo_t true_getaddrinfo;
 freeaddrinfo_t true_freeaddrinfo;
 getnameinfo_t true_getnameinfo;
 gethostbyaddr_t true_gethostbyaddr;
+
+send_t true_send;
+sendto_t true_sendto;
+sendmsg_t true_sendmsg;
 
 int tcp_read_time_out;
 int tcp_connect_time_out;
@@ -144,6 +120,10 @@ static void do_init(void) {
 	SETUP_SYM(freeaddrinfo);
 	SETUP_SYM(gethostbyaddr);
 	SETUP_SYM(getnameinfo);
+    
+	//SETUP_SYM(send);
+	//SETUP_SYM(sendto);
+	//SETUP_SYM(sendmsg);
 	
 	init_l = 1;
 }
@@ -198,6 +178,9 @@ static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_typ
 	char local_in_addr_port[32];
 	char local_in_addr[32], local_in_port[32], local_netmask[32];
 	FILE *file = NULL;
+    
+    //printf("ssssssssss\n");
+    //dprintf("sssszeezesssssssss\n");
 
 	if(proxybound_got_chain_data)
 		return;
@@ -366,8 +349,19 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	optlen = sizeof(socktype);
 	getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &optlen);
     
-	//if(!(SOCKFAMILY(*addr) == AF_INET && socktype == SOCK_STREAM)) {
-	if(SOCKFAMILY(*addr) != AF_INET) {
+    
+    p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
+    
+    PDEBUG("aaaaaaaaaaa\n");
+	for(i = 0; i < num_localnet_addr; i++) {
+        PDEBUG("eeeeeeeeeeee\n");
+		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
+				PDEBUG("bbbbbbbbbbbbbb\n");
+		}
+	}
+    
+    //if(!(SOCKFAMILY(*addr) == AF_INET && socktype == SOCK_STREAM)) {
+	if((SOCKFAMILY(*addr) != AF_INET) || (socktype != SOCK_STREAM)) {
         if (proxybound_allow_leak) {
             PDEBUG("allowing unproxified non tcp connect()\n");
             return true_connect(sock, addr, len);
@@ -378,7 +372,8 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
         }
     }
     
-	if(socktype != SOCK_STREAM) {
+   //Rejecting non local udp
+   /*if (socktype == SOCK_DGRAM){
         if (proxybound_allow_leak) {
             PDEBUG("allowing unproxified udp connect()\n");
             return true_connect(sock, addr, len);
@@ -387,9 +382,11 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
             //exit(0);
             return -1;
         }
-    }
+   }*/
+    
 
-	p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
+
+
 	port = ntohs(((struct sockaddr_in *) addr)->sin_port);
 
 #ifdef DEBUG
@@ -403,26 +400,13 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     remote_dns_connect = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
 
 	for(i = 0; i < num_localnet_addr && !remote_dns_connect; i++) {
-		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr)
-		   == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
+		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
 			if(!localnet_addr[i].port || localnet_addr[i].port == port) {
 				PDEBUG("accessing localnet using true_connect\n");
 				return true_connect(sock, addr, len);
 			}
 		}
 	}
-    
-   //Rejecting non local udp
-   if (socktype == SOCK_DGRAM){
-        if (proxybound_allow_leak) {
-            PDEBUG("allowing unproxified udp connect()\n");
-            return true_connect(sock, addr, len);
-        } else {
-            PDEBUG("blocking unproxified udp connect()\n");
-            //exit(0);
-            return -1;
-        }
-   }
 
 	flags = fcntl(sock, F_GETFL, 0);
 	if(flags & O_NONBLOCK)
@@ -440,6 +424,25 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 		errno = ECONNREFUSED;
 	return ret;
 }
+
+/*
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {
+    return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    //return 0;
+}
+
+ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
+    return true_send(sockfd, buf, len, flags);
+    //return 0;  
+}
+ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
+    return true_sendmsg(sockfd, *msg, flags);
+    //return 0;  
+}*/
+
+//sendmsg
+
+//ssize_t send(int sockfd, const void *buf, size_t len, int flags) {}
 
 //TODO: DNS LEAK: OTHER RESOLVER FUNCTION
 //realresinit = dlsym(lib, "res_init");
@@ -495,7 +498,6 @@ void freeaddrinfo(struct addrinfo *res) {
 		proxy_freeaddrinfo(res);
 	return;
 }
-
 
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags) {
 	char ip_buf[16];

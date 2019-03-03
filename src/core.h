@@ -114,13 +114,8 @@ typedef int (*connect_t)(int, const struct sockaddr *, socklen_t);
 typedef struct hostent* (*gethostbyname_t)(const char *);
 typedef int (*freeaddrinfo_t)(struct addrinfo *);
 typedef struct hostent *(*gethostbyaddr_t) (const void *, socklen_t, int);
-
-typedef int (*getaddrinfo_t)(const char *, const char *, const struct addrinfo *, 
-			     struct addrinfo **);
-
-typedef int (*getnameinfo_t) (const struct sockaddr *, socklen_t, char *, 
-			      socklen_t, char *, socklen_t, int);
-
+typedef int (*getaddrinfo_t)(const char *, const char *, const struct addrinfo *, struct addrinfo **);
+typedef int (*getnameinfo_t) (const struct sockaddr *, socklen_t, char *, socklen_t, char *, socklen_t, int);
 
 extern connect_t true_connect;
 extern gethostbyname_t true_gethostbyname;
@@ -128,6 +123,14 @@ extern getaddrinfo_t true_getaddrinfo;
 extern freeaddrinfo_t true_freeaddrinfo;
 extern getnameinfo_t true_getnameinfo;
 extern gethostbyaddr_t true_gethostbyaddr;
+    
+typedef ssize_t (*send_t)(int, const void *, size_t, int);
+typedef ssize_t (*sendto_t)(int, const void *, size_t, int, const struct sockaddr, socklen_t);
+typedef ssize_t (*sendmsg_t)(int, const struct msghdr, int);
+
+extern send_t true_send;
+extern sendto_t true_sendto;
+extern sendmsg_t true_sendmsg;
 
 struct gethostbyname_data {
 	struct hostent hostent_space;

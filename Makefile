@@ -44,6 +44,9 @@ CFLAGS_MAIN=-DLIB_DIR=\"$(libdir)\" -DSYSCONFDIR=\"$(sysconfdir)\" -DDLL_NAME=\"
 
 all: $(ALL_LIBS) $(ALL_TOOLS)
 
+debug: CFLAGS += -D DEBUG
+debug: $(ALL_LIBS) $(ALL_TOOLS)
+
 install-config:
 	install -d $(DESTDIR)/$(sysconfdir)
 	install $(INSTALL_FLAGS) 644 src/proxybound.conf $(DESTDIR)/$(sysconfdir)/
