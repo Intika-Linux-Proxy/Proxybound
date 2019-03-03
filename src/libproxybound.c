@@ -407,18 +407,8 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     }
 
     //Block udp 
+    //(socktype == SOCK_DGRAM) is non local udp connect altrady handled bellow
     if (socktype != SOCK_STREAM) {
-        if (proxybound_allow_leak) {
-            PDEBUG("allowing direct udp connect()\n\n");
-            return true_connect(sock, addr, len);
-        } else {
-            PDEBUG("blocking direct udp connect() \n\n");
-            return -1;
-        }
-    }
-
-    //Block udp 
-    if (socktype == SOCK_DGRAM){
         if (proxybound_allow_leak) {
             PDEBUG("allowing direct udp connect()\n\n");
             return true_connect(sock, addr, len);
@@ -457,44 +447,37 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 //Already handled in connect ? 
 ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     return true_send(sockfd, buf, len, flags);
-    //return 0;  
+    //if (proxybound_allow_leak) PDEBUG("allowing direct udp send()\n\n"); else return -1;  
 }
 
-ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
-    return true_sendmsg(sockfd, msg, flags);
-    //ssize_t ret;
-    //ret = true_sendmsg(sockfd, msg, flags);
-    //return ret;
-    //return 0;  
-}
-
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {
-    //return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    //return 0;
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {  
     
     struct sockaddr_in *connaddr;
     int sock_type = -1;
     unsigned int sock_type_len = sizeof(sock_type);
     
-    PDEBUG("got sendto request\n\n");
-
+    PDEBUG("sendto: got sendto request\n\n");
+    
     /* If the real connect doesn't exist, we're stuffed */
     if (true_sendto == NULL) {
         PDEBUG("unresolved symbol: sendto\n\n");
-        return(-1);
+        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendto()\n\n"); else return -1;        
     }
     
     connaddr = (struct sockaddr_in *) dest_addr;
+    
+    if (!connaddr) {
+        return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    }
+    
+    if (connaddr->sin_family == AF_UNIX) {
+        return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    }
 
     /* Get the type of the socket */
     getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
-
-    PDEBUG("sendto: sin_family: %i\n\n", connaddr->sin_family);
-    PDEBUG("sendto: sockopt: %i\n\n", sock_type);
     
-    /* If this a UDP socket with a non-local destination address  */
-    /* then we refuse it, since it is probably a DNS request      */
-    if (sock_type == SOCK_DGRAM) {
+    if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
         PDEBUG("sendto: is on a udp stream\n\n");
         
         char ip[256];
@@ -503,15 +486,72 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
         p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
         inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
-        if (!(ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
-            PDEBUG("sendto: is on a udp stream with a non-local destination, may be a DNS request: rejecting.\n\n");
+        PDEBUG("sendmsg: ip: %s\n\n",ip);
+        
+        //Allow local
+        if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
+            return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
         else
-            return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+            PDEBUG("sendto: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n\n");
                 
-        return -1;
+        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendto()\n\n"); else return -1;
     }
-    return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    //return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    //return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+}
+
+ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
+
+    struct sockaddr_in *connaddr;
+    int sock_type = -1;
+    unsigned int sock_type_len = sizeof(sock_type);
+    
+    PDEBUG("sendmsg: got sendmsg request\n\n");
+
+    /* If the real connect doesn't exist, we're stuffed */
+    if (true_sendmsg == NULL) {
+        PDEBUG("unresolved symbol: sendmsg\n\n");
+        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendmsg()\n\n"); else return -1;
+    }
+    
+    connaddr = (struct sockaddr_in *) msg->msg_name;
+    
+    if (!connaddr) {
+        return true_sendmsg(sockfd, msg, flags);
+    }
+    
+    if (connaddr->sin_family == AF_UNIX) {
+        return true_sendmsg(sockfd, msg, flags);
+    }
+    
+    /* Get the type of the socket */
+    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
+
+    if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
+        PDEBUG("sendmsg: is on a udp stream\n\n");
+       
+        char ip[256];
+        struct in_addr *p_addr_in;
+        
+        p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
+        inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
+ 
+        PDEBUG("sendmsg: ip: %s\n\n",ip);
+        
+        //Allow local
+        if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
+            return true_sendmsg(sockfd, msg, flags);
+        else
+            PDEBUG("sendmsg: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n\n");
+            
+
+        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendmsg()\n\n"); else return -1;
+    }
+    return true_sendmsg(sockfd, msg, flags);
+    //return (ssize_t) true_sendmsg(sockfd, msg, flags);;
+    //ssize_t ret;
+    //ret = true_sendmsg(sockfd, msg, flags);
+    //return ret;
 }
 
 //TODO: DNS LEAK: OTHER RESOLVER FUNCTION
