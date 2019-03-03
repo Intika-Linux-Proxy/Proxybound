@@ -21,7 +21,8 @@ Used environment variable:
 - PROXYBOUND_SOCKS5_HOST:   Specify unique socks 5 proxy to use 
 - PROXYBOUND_SOCKS5_PORT:   Socks 5 port
 - PROXYBOUND_FORCE_DNS:     Force dns requests through (1 or 0)
-- PROXYBOUND_ALLOW_LEAKS:   Not yet implemented (Allow unproxyfied protocols "UDP/ICMP/RAW")
+- PROXYBOUND_ALLOW_LEAKS:   Allow/Block unproxyfied protocols "UDP/ICMP/RAW" 
+                            Blocked by default (1 or 0)
 
 Install:
 ========
