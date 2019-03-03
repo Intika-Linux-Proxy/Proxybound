@@ -45,6 +45,34 @@
 #define     SOCKFAMILY(x)     (satosin(x)->sin_family)
 #define     MAX_CHAIN 512
 
+
+
+
+
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <dlfcn.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/poll.h>
+#include <sys/time.h>
+#include <pwd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <resolv.h>
+
+
+
 connect_t true_connect;
 gethostbyname_t true_gethostbyname;
 getaddrinfo_t true_getaddrinfo;
@@ -383,6 +411,18 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 			}
 		}
 	}
+    
+   //Rejecting non local udp
+   if (socktype == SOCK_DGRAM){
+        if (proxybound_allow_leak) {
+            PDEBUG("allowing unproxified udp connect()\n");
+            return true_connect(sock, addr, len);
+        } else {
+            PDEBUG("blocking unproxified udp connect()\n");
+            //exit(0);
+            return -1;
+        }
+   }
 
 	flags = fcntl(sock, F_GETFL, 0);
 	if(flags & O_NONBLOCK)
@@ -400,6 +440,19 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 		errno = ECONNREFUSED;
 	return ret;
 }
+
+//TODO: DNS LEAK: OTHER RESOLVER FUNCTION
+//realresinit = dlsym(lib, "res_init");
+//realresquery = dlsym(lib, "res_query");
+//realressend = dlsym(lib, "res_send");
+//realresquerydomain = dlsym(lib, "res_querydomain");
+//realressearch = dlsym(lib, "res_search");
+//realgethostbyaddr = dlsym(lib, "gethostbyaddr"); //Needs rewrite
+//realgetipnodebyname = dlsym(lib, "getipnodebyname");
+
+//UDP & DNS LEAK
+//realsendto = dlsym(lib, "sendto");
+//realsendmsg = dlsym(lib, "sendmsg");
 
 static struct gethostbyname_data ghbndata;
 
