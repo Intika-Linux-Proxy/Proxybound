@@ -60,6 +60,7 @@ unsigned int proxybound_proxy_count = 0;
 int proxybound_got_chain_data = 0;
 unsigned int proxybound_max_chain = 1;
 int proxybound_quiet_mode = 0;
+int proxybound_allow_leak = 0;
 int proxybound_resolver = 0;
 localaddr_arg localnet_addr[MAX_LOCALNET];
 size_t num_localnet_addr = 0;
@@ -151,6 +152,10 @@ static void init_additional_settings(chain_type *ct) {
 	tcp_read_time_out = 4 * 1000;
 	tcp_connect_time_out = 10 * 1000;
 	*ct = DYNAMIC_TYPE;
+    
+	env = getenv(PROXYBOUND_ALLOW_LEAKS_ENV_VAR);
+	if(env && *env == '1')
+		proxybound_allow_leak = 1;
 
 	env = getenv(PROXYBOUND_QUIET_MODE_ENV_VAR);
 	if(env && *env == '1')
@@ -315,7 +320,8 @@ static void manual_socks5_env(proxy_data *pd, unsigned int *proxy_count, chain_t
 	proxybound_got_chain_data = 1;
 }
 
-/*******  HOOK FUNCTIONS  *******/
+/**************************************************************************************************************************************************************/
+/*******  HOOK FUNCTIONS  *************************************************************************************************************************************/
 
 int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	int socktype = 0, flags = 0, ret = 0;
@@ -331,21 +337,42 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	INIT();
 	optlen = sizeof(socktype);
 	getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &optlen);
-	if(!(SOCKFAMILY(*addr) == AF_INET && socktype == SOCK_STREAM))
-		return true_connect(sock, addr, len);
+    
+	//if(!(SOCKFAMILY(*addr) == AF_INET && socktype == SOCK_STREAM)) {
+	if(SOCKFAMILY(*addr) != AF_INET) {
+        if (proxybound_allow_leak) {
+            PDEBUG("allowing unproxified non tcp connect()\n");
+            return true_connect(sock, addr, len);
+        } else {
+            PDEBUG("blocking unproxified non tcp connect()\n");
+            //exit(0);
+            return -1;
+        }
+    }
+    
+	if(socktype != SOCK_STREAM) {
+        if (proxybound_allow_leak) {
+            PDEBUG("allowing unproxified udp connect()\n");
+            return true_connect(sock, addr, len);
+        } else {
+            PDEBUG("blocking unproxified udp connect()\n");
+            //exit(0);
+            return -1;
+        }
+    }
 
 	p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
 	port = ntohs(((struct sockaddr_in *) addr)->sin_port);
 
 #ifdef DEBUG
-//      PDEBUG("localnet: %s; ", inet_ntop(AF_INET,&in_addr_localnet, str, sizeof(str)));
-//      PDEBUG("netmask: %s; " , inet_ntop(AF_INET, &in_addr_netmask, str, sizeof(str)));
+    //PDEBUG("localnet: %s; ", inet_ntop(AF_INET,&in_addr_localnet, str, sizeof(str)));
+    //PDEBUG("netmask: %s; " , inet_ntop(AF_INET, &in_addr_netmask, str, sizeof(str)));
 	PDEBUG("target: %s\n", inet_ntop(AF_INET, p_addr_in, str, sizeof(str)));
 	PDEBUG("port: %d\n", port);
 #endif
 
-	// check if connect called from proxydns
-        remote_dns_connect = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
+	// Check if connect called from proxydns
+    remote_dns_connect = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
 
 	for(i = 0; i < num_localnet_addr && !remote_dns_connect; i++) {
 		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr)
@@ -375,6 +402,7 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 }
 
 static struct gethostbyname_data ghbndata;
+
 struct hostent *gethostbyname(const char *name) {
 	INIT();
 
@@ -415,16 +443,8 @@ void freeaddrinfo(struct addrinfo *res) {
 	return;
 }
 
-// work around a buggy prototype in GLIBC. according to the bugtracker it has been fixed in git at 02 May 2011.
-// 2.14 came out in June 2011 so that should be the first fixed version
-#if defined(__GLIBC__) && (__GLIBC__ < 3) && (__GLIBC_MINOR__ < 14)
-int getnameinfo(const struct sockaddr *sa,
-		socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, unsigned int flags)
-#else
-int getnameinfo(const struct sockaddr *sa,
-		socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags)
-#endif
-{
+
+int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags) {
 	char ip_buf[16];
 	int ret = 0;
 

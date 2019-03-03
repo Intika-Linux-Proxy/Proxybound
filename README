@@ -1,23 +1,17 @@
-ProxyBound v4.9
+ProxyBound v5.0
 ===============
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
   in dynamically linked programs via a preloaded DLL and redirects the
-  connections through SOCKS4a/5 or HTTP proxies.
-  
-  It's based on proxychains-ng by rofl0r & proxychains by haad
-  this program works only on dynamically linked programs. also both 
-  proxybound and the program to call must use the same dynamic linker (i.e. same libc) 
+  connections through SOCKS4a/5 or HTTP proxies. This is  based on 
+  proxychains-ng by rofl0r & proxychains by haad
   
 How it works:
 =============
 
-  this program works only on dynamically linked programs.
-  also both proxybound and the program to call must use
-  the same dynamic linker (i.e. same libc).
-  why ? because in order to hook to libc functions like
-  connect(), dynamic loader facilities are used, namely
-  dl_sym() and LD_PRELOAD.
+  Proxybound hook libc functions like connect(), dynamic loader 
+  facilities are used, namely dl_sym() and LD_PRELOAD thus
+  dynamically linked programs are required.
   
 Used environment variable:
 ==========================
@@ -42,8 +36,15 @@ Install:
 Changelog:
 ==========
 
+  Version 5.0:
+  - Initial leak lock feature
+  - Code cleaning
+  - Update readme 
+
   Version 4.9:
   - Import simple SOCKS5 proxy mode from https://github.com/haad/proxychains
+  - Code cleaning
+  - Update readme 
 
   Version 4.8:
   - Updates with some features from https://github.com/haad/proxychains
