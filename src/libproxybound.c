@@ -65,7 +65,7 @@ int proxybound_got_chain_data = 0;
 unsigned int proxybound_max_chain = 1;
 int proxybound_quiet_mode = 0;
 int proxybound_allow_leak = 0;
-int proxybound_resolver = 0;
+int proxybound_resolver = 1;
 localaddr_arg localnet_addr[MAX_LOCALNET];
 size_t num_localnet_addr = 0;
 unsigned int remote_dns_subnet = 224;
@@ -543,7 +543,6 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
             return true_sendmsg(sockfd, msg, flags);
         else
             PDEBUG("sendmsg: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n\n");
-            
 
         if (proxybound_allow_leak) PDEBUG("allowing direct udp sendmsg()\n\n"); else return -1;
     }
