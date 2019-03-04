@@ -339,7 +339,10 @@ static void manual_socks5_env(proxy_data *pd, unsigned int *proxy_count, chain_t
 }
 
 static int is_dns_port(unsigned short port) {
-    if ((port == htons(53)) || (port == htons(853))) {return 1;}
+    if ((port == 53) || (port == 853)) {
+        if (proxybound_allow_dns) {PDEBUG("allowing direct udp dns request on port: %d\n\n",port);}
+        return 1;
+    }
     return 0;
 }
 
