@@ -16,6 +16,7 @@ Features:
 - Works with chrome/chromium/similar 
 - Incompatible applications are terminated with a proper message
 - Many additional settings over environment variable
+- etc.
   
  
 Used environment variable:
@@ -40,7 +41,7 @@ How it works:
 Limits : 
 ========
 - IPv6 is blocked and is not supported
-- Some applications are incompatible (terminated 2 sec after startup)
+- Some applications are incompatible (they will be explicitly terminated 2 sec after startup, to avoid leaks)
 
 Install:
 ========
@@ -72,12 +73,12 @@ Changelog:
   - Update readme 
 
   Version 4.9:
-  - Import simple SOCKS5 proxy mode from https://github.com/haad/proxychains
+  - Import simple SOCKS5 proxy mode from @haad/proxychains
   - Code cleaning
   - Update readme 
 
   Version 4.8:
-  - Updates with some features from https://github.com/haad/proxychains
+  - Updates with some features from @haad/proxychains
 
   Version 4.7:
   - Fix chrome compatibility
