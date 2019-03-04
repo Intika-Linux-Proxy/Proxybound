@@ -16,13 +16,14 @@ How it works:
 Used environment variable:
 ==========================
 
-- PROXYBOUND_CONF_FILE:     Path to config file
-- PROXYBOUND_QUIET_MODE:    Quiet mode (1 or 0)
-- PROXYBOUND_SOCKS5_HOST:   Specify unique socks 5 proxy to use 
-- PROXYBOUND_SOCKS5_PORT:   Socks 5 port
-- PROXYBOUND_FORCE_DNS:     Force dns requests through (1 or 0)
+- PROXYBOUND_CONF_FILE:     Path to config file (default ./proxybound.conf then /etc/proxybound.conf)
+- PROXYBOUND_QUIET_MODE:    Quiet mode (1 or 0, default 0)
+- PROXYBOUND_SOCKS5_HOST:   Specify unique socks 5 proxy to use (default not used)
+- PROXYBOUND_SOCKS5_PORT:   Socks 5 port (default not used)
+- PROXYBOUND_FORCE_DNS:     Force dns resolv requests through (1 or 0, default 1)
+- PROXYBOUND_ALLOW_DNS:     Allow direct dns, allow udp port 53 and 853 (1 or 0, default 0)
 - PROXYBOUND_ALLOW_LEAKS:   Allow/Block unproxyfied protocols "UDP/ICMP/RAW" 
-                            Blocked by default (1 or 0)
+                            Blocked by default (1 or 0, default 0)
 
 Install:
 ========
