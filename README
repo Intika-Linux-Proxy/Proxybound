@@ -1,4 +1,4 @@
-ProxyBound v5.1
+ProxyBound v5.2
 ===============
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
@@ -16,14 +16,14 @@ How it works:
 Used environment variable:
 ==========================
 
-- PROXYBOUND_CONF_FILE:     Path to config file (default ./proxybound.conf then /etc/proxybound.conf)
-- PROXYBOUND_QUIET_MODE:    Quiet mode (1 or 0, default 0)
-- PROXYBOUND_SOCKS5_HOST:   Specify unique socks 5 proxy to use (default not used)
-- PROXYBOUND_SOCKS5_PORT:   Socks 5 port (default not used)
-- PROXYBOUND_FORCE_DNS:     Force dns resolv requests through (1 or 0, default 1)
-- PROXYBOUND_ALLOW_DNS:     Allow direct dns, allow udp port 53 and 853 (1 or 0, default 0)
-- PROXYBOUND_ALLOW_LEAKS:   Allow/Block unproxyfied protocols "UDP/ICMP/RAW" 
-                            Blocked by default (1 or 0, default 0)
+- PROXYBOUND_CONF_FILE:         Path to config file (default ./proxybound.conf then /etc/proxybound.conf)
+- PROXYBOUND_QUIET_MODE:        Quiet mode (1 or 0, default 0)
+- PROXYBOUND_SOCKS5_HOST:       Specify unique socks 5 proxy to use (default not used)
+- PROXYBOUND_SOCKS5_PORT:       Socks 5 port (default not used)
+- PROXYBOUND_FORCE_DNS:         Force dns resolv requests through (1 or 0, default 1)
+- PROXYBOUND_ALLOW_DNS:         Allow direct dns, allow udp port 53 and 853 (1 or 0, default 0)
+- PROXYBOUND_ALLOW_LEAKS:       Allow/Block unproxyfied protocols "UDP/ICMP/RAW", blocked by default (1 or 0, default 0)
+- PROXYBOUND_WORKING_INDICATOR: Create '/tmp/proxybound.tmp' when dll is working as intended (1 or 0, default 0)
 
 Install:
 ========
@@ -37,6 +37,14 @@ Install:
 
 Changelog:
 ==========
+
+  Version 5.2:
+  - add PROXYBOUND_ALLOW_DNS
+  - update lock feature (send sendto sendmsg)
+  - add function to terminate when app is not supported
+  - add PROXYBOUND_WORKING_INDICATOR
+  - Code cleaning
+  - Update readme 
 
   Version 5.1:
   - leak lock feature (send sendto sendmsg)

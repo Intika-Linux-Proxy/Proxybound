@@ -66,6 +66,7 @@ unsigned int proxybound_max_chain = 1;
 int proxybound_quiet_mode = 0;
 int proxybound_allow_leak = 0;
 int proxybound_allow_dns = 0;
+int proxybound_working_indicator = 0;
 int proxybound_resolver = 1;
 localaddr_arg localnet_addr[MAX_LOCALNET];
 size_t num_localnet_addr = 0;
@@ -83,6 +84,8 @@ static inline void get_chain_data(proxy_data * pd, unsigned int *proxy_count, ch
 static void manual_socks5_env(proxy_data * pd, unsigned int *proxy_count, chain_type * ct);
 
 static int is_dns_port(unsigned short port);
+
+static void create_tmp_proof_file();
 
 static void* load_sym(char* symname, void* proxyfunc) {
 
@@ -108,6 +111,11 @@ static void* load_sym(char* symname, void* proxyfunc) {
 static void do_init(void) {
 	MUTEX_INIT(&internal_ips_lock, NULL);
 	MUTEX_INIT(&hostdb_lock, NULL);
+    
+    //file to indicate that the injection is working
+    char *env; env = getenv(PROXYBOUND_WORKING_INDICATOR_ENV_VAR);
+	if(env && *env == '1') proxybound_working_indicator = 1;
+    if (proxybound_working_indicator) create_tmp_proof_file();
     
     /* check for simple SOCKS5 proxy setup */
 	manual_socks5_env(proxybound_pd, &proxybound_proxy_count, &proxybound_ct);
@@ -143,6 +151,13 @@ static void init_lib_wrapper(const char* caller) {
 	if(!init_l) PDEBUG("%s called from %s\n", __FUNCTION__,  caller);
 	pthread_once(&init_once, do_init);
 #endif
+}
+
+static void create_tmp_proof_file() {
+    FILE *fp;
+    if ((fp = fopen("/tmp/proxybound.tmp", "w")) == NULL ) {exit(1); exit(1);}
+    fprintf(fp, "injected\n");
+    fflush(fp);fclose(fp);
 }
 
 /* if we use gcc >= 3, we can instruct the dynamic loader 
@@ -185,9 +200,6 @@ static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_typ
 	char local_in_addr_port[32];
 	char local_in_addr[32], local_in_port[32], local_netmask[32];
 	FILE *file = NULL;
-    
-    //printf("ssssssssss\n");
-    //dprintf("sssszeezesssssssss\n");
 
 	if(proxybound_got_chain_data)
 		return;
@@ -379,6 +391,7 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     // AF_AAL5			/*  8  - Reserved for Werner's ATM 	*/
     // AF_X25			/*  9  - Reserved for X.25 project 	*/
     // AF_MAX			/*  12 - For now..                  */
+    // PF_FILE
     // Etc. 
 
     //Allow direct unix
@@ -411,6 +424,7 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     }*/
 
     //Block other sock 
+    //WARNING NORMALLY I DONT BLOCK THEASE... 
     if (SOCKFAMILY(*addr) != AF_INET) {
         if (proxybound_allow_leak) {
             PDEBUG("allowing direct non tcp connect()\n\n");
@@ -498,6 +512,7 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
     /* Get the type of the socket */
     getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
     
+    //WARNING NORMALLY I DONT BLOCK THEASE != AF_INET... 
     if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
         PDEBUG("sendto: is on a udp stream\n\n");
         
@@ -556,6 +571,7 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
     /* Get the type of the socket */
     getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
 
+    //WARNING NORMALLY I DONT BLOCK THEASE != AF_INET... 
     if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
         PDEBUG("sendmsg: is on a udp stream\n\n");
        
