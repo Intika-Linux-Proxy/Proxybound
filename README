@@ -91,6 +91,7 @@ Changelog:
 
   Version 4.40:
   - Import security issue fix CVE-2015-3887 
+  - Used v4.3 (4.03) for initial fork
 
 Configuration:
 ==============
