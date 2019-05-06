@@ -1,5 +1,5 @@
-ProxyBound v5.2
-===============
+ProxyBound v5.20
+================
 
   ProxyBound is a UNIX program, that hooks network-related libc functions
   in dynamically linked programs via a preloaded DLL and redirects the
@@ -56,7 +56,7 @@ Install:
 Changelog:
 ==========
 
-  Version 5.2:
+  Version 5.20:
   - add PROXYBOUND_ALLOW_DNS
   - update lock feature (send sendto sendmsg)
   - add function to terminate when app is not supported
@@ -64,32 +64,32 @@ Changelog:
   - Code cleaning
   - Update readme 
 
-  Version 5.1:
+  Version 5.10:
   - leak lock feature (send sendto sendmsg)
 
-  Version 5.0:
+  Version 5.00:
   - Initial leak lock feature
   - Code cleaning
   - Update readme 
 
-  Version 4.9:
+  Version 4.90:
   - Import simple SOCKS5 proxy mode from @haad/proxychains
   - Code cleaning
   - Update readme 
 
-  Version 4.8:
+  Version 4.80:
   - Updates with some features from @haad/proxychains
 
-  Version 4.7:
+  Version 4.70:
   - Fix chrome compatibility
 
-  Version 4.6:
+  Version 4.60:
   - Code cleanning & update
 
-  Version 4.5:
+  Version 4.50:
   - Changing the name to ProxyBound
 
-  Version 4.4:
+  Version 4.40:
   - Import security issue fix CVE-2015-3887 
 
 Configuration:
