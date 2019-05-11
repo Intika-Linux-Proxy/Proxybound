@@ -20,16 +20,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "ip-type.h"
 
 #ifndef __CORE_HEADER
 #define __CORE_HEADER
 #define BUFF_SIZE 8*1024  // used to read responses from proxies.
 #define     MAX_LOCALNET 64
-
-typedef union {
-	unsigned char octet[4];
-	uint32_t as_int;
-} ip_type;
 
 typedef struct {
 	uint32_t hash;

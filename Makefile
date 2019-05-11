@@ -15,7 +15,7 @@ sysconfdir=$(prefix)/etc
 
 SRCS = $(sort $(wildcard src/*.c))
 OBJS = $(SRCS:.c=.o)
-LOBJS = src/core.o src/common.o src/libproxybound.o
+LOBJS = src/core.o src/common.o src/libproxybound.o src/hostsreader.o src/ip-type.o 
 
 CFLAGS  += -Wall -O0 -g -std=c99 -D_GNU_SOURCE -pipe
 LDFLAGS = -shared -fPIC -Wl,--no-as-needed -ldl -lpthread
