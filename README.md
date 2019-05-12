@@ -54,6 +54,12 @@ if you dont install, you can use proxybound from the build directory like this: 
 Changelog:
 ==========
 
+**Version 5.40:**
+
+- Add "--help" and "-h" parameter
+- Add "--version" and "-v" parameter
+- Update help page
+
 **Version 5.30:**
 
 - Code cleaning

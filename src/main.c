@@ -23,8 +23,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
-
 #include "common.h"
+
+
+static char appVersion[5] = "5.40\n";
 
 static const char *dll_name = DLL_NAME;
 static pid_t child_pid = -1 ;
@@ -41,10 +43,33 @@ static const char *dll_dirs[] = {
 };
 
 static int usage(char **argv) {
-	printf("\nUsage:\t%s -q -f config_file program_name [arguments]\n"
-	       "\t-q makes proxybound quiet - this overrides the config setting\n"
-	       "\t-f allows to manually specify a configfile to use\n"
-	       "\tfor example : proxybound telnet somehost.com\n" "More help in README file\n\n", argv[0]);
+    printf("\nProxybound version %s", appVersion);
+    printf("https://github.com/Intika-Linux-Proxy/Proxybound\n");
+    printf("\nUsage:\n");
+	printf("%s -q -f config_file command-or-app arguments\n", argv[0]);
+    printf("\nOptions:\n");
+	printf("-q \t makes proxybound quiet, this overrides the config setting\n");
+    printf("-f \t allows to manually specify a configfile to use\n");
+    printf("-v \t or --version, disaplay application version\n");
+    printf("\nExample:\n");
+    printf("proxybound telnet somehost.com\n");
+    printf("\nAvailable environment variables:\n");
+    printf("- PROXYBOUND_CONF_FILE:         Path to config file (default ./proxybound.conf then /etc/proxybound.conf)\n");
+    printf("- PROXYBOUND_QUIET_MODE:        Quiet mode (1 or 0, default 0)\n");
+    printf("- PROXYBOUND_SOCKS5_HOST:       Specify unique socks 5 proxy to use (default not used)\n");
+    printf("- PROXYBOUND_SOCKS5_PORT:       Socks 5 port (default not used)\n");
+    printf("- PROXYBOUND_FORCE_DNS:         Force dns resolv requests through (1 or 0, default 1)\n");
+    printf("- PROXYBOUND_ALLOW_DNS:         Allow direct dns, allow udp port 53 and 853 (1 or 0, default 0)\n");
+    printf("- PROXYBOUND_ALLOW_LEAKS:       Allow/Block unproxyfied protocols 'UDP/ICMP/RAW', blocked by default (1 or 0, default 0)\n");
+    printf("- PROXYBOUND_WORKING_INDICATOR: Create '/tmp/proxybound.tmp' when dll is working as intended (1 or 0, default 0)\n");  
+    printf("\nMore help:\n");
+    printf("More help is available in README.md file\n\n");
+	return EXIT_FAILURE;
+}
+
+static int version(char **argv) {
+    printf("\nProxybound version %s", appVersion);
+    printf("https://github.com/Intika-Linux-Proxy/Proxybound\n\n");
 	return EXIT_FAILURE;
 }
 
@@ -115,6 +140,14 @@ int main(int argc, char *argv[]) {
 	size_t i;
 	const char *prefix = NULL;
 
+    if (argc != 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+        return usage(argv);
+    }
+    
+    if (argc != 2 || !strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
+        return version(argv);
+    }
+    
 	for(i = 0; i < MAX_COMMANDLINE_FLAGS; i++) {
 		if(start_argv < argc && argv[start_argv][0] == '-') {
 			if(argv[start_argv][1] == 'q') {
