@@ -1,4 +1,4 @@
-ProxyBound v5.30
+ProxyBound v5.40
 ================
 
 ProxyBound is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4a/5 or HTTP proxies. This is based on  proxychains-ng by rofl0r, proxychains by haad and torsocks by dgoulet
