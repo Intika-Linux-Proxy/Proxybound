@@ -63,7 +63,7 @@ static int usage(char **argv) {
     printf("- PROXYBOUND_ALLOW_LEAKS:       Allow/Block unproxyfied protocols 'UDP/ICMP/RAW', blocked by default (1 or 0, default 0)\n");
     printf("- PROXYBOUND_WORKING_INDICATOR: Create '/tmp/proxybound.tmp' when dll is working as intended (1 or 0, default 0)\n");  
     printf("\nMore help:\n");
-    printf("More help is available in README.md file\n\n");
+    printf("More help is available in README.md file https://github.com/Intika-Linux-Proxy/Proxybound\n\n");
 	return EXIT_FAILURE;
 }
 
