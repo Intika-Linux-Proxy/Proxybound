@@ -5,8 +5,8 @@ typedef union {
 	uint32_t as_int;
 } ip_type;
 
-const ip_type ip_type_invalid = { .as_int = -1 };
-const ip_type ip_type_localhost = { {127, 0, 0, 1} };
+extern const ip_type ip_type_invalid;
+extern const ip_type ip_type_localhost;
 
 // Definition for ipv6
 /*
@@ -22,7 +22,4 @@ typedef struct {
 	} addr;
 	char is_v6;
 } ip_type;
-
-const ip_type ip_type_invalid = { .addr.v4.as_int = -1 };
-const ip_type ip_type_localhost = { .addr.v4.octet = {127, 0, 0, 1} };
 */
