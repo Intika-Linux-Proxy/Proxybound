@@ -483,13 +483,6 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
-    PDEBUG("bind: got a bind request\n");
     
     /* If the real bind doesn't exist, we're stuffed */
     if (true_bind == NULL) {
@@ -497,7 +490,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         return -1;
     }
     
-    return true_bind(sockfd, *addr, addrlen);
+    return true_bind(sockfd, addr, addrlen);
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {  

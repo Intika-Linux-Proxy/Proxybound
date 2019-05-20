@@ -123,7 +123,7 @@ extern gethostbyaddr_t true_gethostbyaddr;
 typedef ssize_t (*send_t)(int, const void *, size_t, int);
 typedef ssize_t (*sendto_t)(int, const void *, size_t, int, const struct sockaddr, socklen_t);
 typedef ssize_t (*sendmsg_t)(int, const struct msghdr *, int);
-typedef int (*bind_t)(int, const struct sockaddr, socklen_t);
+typedef int (*bind_t)(int, const struct sockaddr *, socklen_t);
 
 extern send_t true_send;
 extern sendto_t true_sendto;
