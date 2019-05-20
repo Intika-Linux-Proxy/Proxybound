@@ -67,6 +67,7 @@ Changelog:
 
 - Block non tcp packet on send()
 - Prevent bypass noleak
+- Add support for bind() to block listen on unsupported protocol 
 
 **Version 5.40:**
 

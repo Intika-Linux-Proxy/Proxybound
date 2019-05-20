@@ -26,7 +26,7 @@
 #include "common.h"
 
 
-static char appVersion[5] = "5.40\n";
+static char appVersion[5] = "5.50\n";
 
 static const char *dll_name = DLL_NAME;
 static pid_t child_pid = -1 ;
