@@ -136,6 +136,7 @@ static void do_init(void) {
 	SETUP_SYM(send);
 	SETUP_SYM(sendto);
 	SETUP_SYM(sendmsg);
+	SETUP_SYM(bind);
 	
 	init_l = 1;
 }
@@ -481,7 +482,21 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 }
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-    PDEBUG("bind: got a bind request\n\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    PDEBUG("bind: got a bind request\n");
+    
+    /* If the real bind doesn't exist, we're stuffed */
+    if (true_bind == NULL) {
+        PDEBUG("unresolved symbol: bind\n\n");
+        return -1;
+    }
+    
     return true_bind(sockfd, *addr, addrlen);
 }
 
@@ -522,7 +537,7 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
         p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
         inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
-        PDEBUG("sendmsg: ip: %s\n\n",ip);
+        PDEBUG("sendto: ip: %s\n\n",ip);
         
         //Allow local
         if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
