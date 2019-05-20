@@ -1,4 +1,4 @@
-ProxyBound v5.40
+ProxyBound v5.50
 ================
 
 ProxyBound is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4a/5 or HTTP proxies. This is based on  proxychains-ng by rofl0r, proxychains by haad and torsocks by dgoulet
@@ -51,8 +51,22 @@ Install:
 
 if you dont install, you can use proxybound from the build directory like this: `./proxybound -f src/proxybound.conf telnet google.com 80`
 
+Install debug version :
+=======================
+
+```
+  ./configure
+  make debug
+  [optional] sudo make install
+```
+
 Changelog:
 ==========
+
+**Version 5.50:**
+
+- Block non tcp packet on send()
+- Prevent bypass noleak
 
 **Version 5.40:**
 

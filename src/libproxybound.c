@@ -479,10 +479,45 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	return ret;
 }
 
-//Already handled in connect ? 
 ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
-    return true_send(sockfd, buf, len, flags);
-    //if (proxybound_allow_leak) PDEBUG("allowing direct udp send()\n\n"); else return -1;  
+    //The send() call may be used only when the socket is in a connected state (so that the intended recipient is known)
+    //To avoid any hack this is watched for leak too
+    
+    /* If the real connect doesn't exist, we're stuffed */
+    if (true_send == NULL) {
+        PDEBUG("unresolved symbol: send\n\n");
+        return -1;        
+    }
+    
+    //return true_send(sockfd, buf, len, flags);
+    if (proxybound_allow_leak) {
+        PDEBUG("send: got send request\n");
+        PDEBUG("allowing direct send()\n\n"); 
+        return true_send(sockfd, buf, len, flags);
+        //Already handled in connect ? 
+        //TODO deeper handling (socktype)
+    } else {
+        int sock_type = -1;
+        unsigned int sock_type_len = sizeof(sock_type);
+
+        /* Get the type of the socket */
+        getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
+        
+        if (sock_type != SOCK_STREAM) {
+            //SOCK_STREAM
+            //SOCK_DGRAM
+            //SOCK_SEQPACKET
+            //SOCK_RAW
+            //SOCK_RDM
+            //SOCK_PACKET
+            PDEBUG("send: blocking send request type SOCK_DGRAM/SOCK_SEQPACKET/SOCK_RAW/SOCK_RDM/SOCK_PACKET\n\n");
+            return -1;
+            //TODO may block dns here
+        } else {
+            return true_send(sockfd, buf, len, flags);
+        }
+        return -1;
+    }
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {  
@@ -539,9 +574,11 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
             else {return -1;}
             return -1; //Au cas ou
         }
+    } else {
+        return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+        //return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
     }
-    return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    //return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
+    return -1;
 }
 
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
@@ -599,12 +636,14 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
             return -1; //Au cas ou
         }
         
+    } else {
+        return true_sendmsg(sockfd, msg, flags);
+        //return (ssize_t) true_sendmsg(sockfd, msg, flags);;
+        //ssize_t ret;
+        //ret = true_sendmsg(sockfd, msg, flags);
+        //return ret;
     }
-    return true_sendmsg(sockfd, msg, flags);
-    //return (ssize_t) true_sendmsg(sockfd, msg, flags);;
-    //ssize_t ret;
-    //ret = true_sendmsg(sockfd, msg, flags);
-    //return ret;
+    return -1;    
 }
 
 //TODO: DNS LEAK: OTHER RESOLVER FUNCTION
