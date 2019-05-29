@@ -584,14 +584,15 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     PDEBUG("bind() sock SOCK_RDM = %d\n",SOCK_RDM);
     PDEBUG("bind() sock SOCK_PACKET = %d\n",SOCK_PACKET);
     PDEBUG("------------------------------- \n");
-    PDEBUG("bind: requested SOCK =%d)\n",socktype);
-    PDEBUG("bind: requested SOCKFAMILY =%d)\n",SOCKFAMILY(*addr));
+    PDEBUG("bind: requested SOCK =%d\n",socktype);
+    PDEBUG("bind: requested SOCKFAMILY =%d\n",SOCKFAMILY(*addr));
     PDEBUG("------------------------------- \n");
     #endif
 
     //Required to proxify the connection
     //Type Raw, 0.0.0.0, MSG_PROXY
-    if ((socktype == SOCK_RAW) && (SOCKFAMILY(*addr) == MSG_PROXY)) {
+    //if ((socktype == SOCK_RAW) && (SOCKFAMILY(*addr) == MSG_PROXY)) {
+    if ((SOCKFAMILY(*addr) == MSG_PROXY)) {
         if ((ip[0] == '0') && (ip[1] == '.') && (ip[2] == '0') && (ip[3] == '.' ) && (ip[4] == '0') && (ip[5] == '.') && (ip[6] == '0')) {
             PDEBUG("bind: bind allowing Raw, 0.0.0.0, MSG_PROXY...\n");
             return true_bind(sockfd, addr, addrlen);
