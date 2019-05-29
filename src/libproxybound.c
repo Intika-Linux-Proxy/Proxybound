@@ -96,10 +96,10 @@ static void* load_sym(char* symname, void* proxyfunc) {
 		fprintf(stderr, "Cannot load symbol '%s' %s\n", symname, dlerror());
 		exit(1);
 	} else {
-		PDEBUG("loaded symbol '%s'" " real addr %p  wrapped addr %p\n", symname, funcptr, proxyfunc);
+		PDEBUG("proxybound: loaded symbol '%s'" " real addr %p  wrapped addr %p\n", symname, funcptr, proxyfunc);
 	}
 	if(funcptr == proxyfunc) {
-		PDEBUG("circular reference detected, aborting!\n");
+		PDEBUG("proxybound: circular reference detected, aborting!\n");
 		abort();
 	}
 	return funcptr;
@@ -147,10 +147,10 @@ static void init_lib_wrapper(const char* caller) {
 #endif
 #ifndef THREAD_SAFE
 	if(init_l) return;
-	PDEBUG("%s called from %s\n", __FUNCTION__,  caller);
+	PDEBUG("proxybound: %s called from %s\n", __FUNCTION__,  caller);
 	do_init();
 #else
-	if(!init_l) PDEBUG("%s called from %s\n", __FUNCTION__,  caller);
+	if(!init_l) PDEBUG("proxybound: %s called from %s\n", __FUNCTION__,  caller);
 	pthread_once(&init_once, do_init);
 #endif
 }
@@ -269,10 +269,10 @@ static void get_chain_data(proxy_data * pd, unsigned int *proxy_count, chain_typ
 					memset(local_in_port, 0, sizeof(local_in_port) / sizeof(local_in_port[0]));
 
 					if(sscanf(local_in_addr_port, "%15[^:]:%5s", local_in_addr, local_in_port) < 2) {
-						PDEBUG("added localnet: netaddr=%s, netmask=%s\n",
+						PDEBUG("proxybound: added localnet: netaddr=%s, netmask=%s\n",
 						       local_in_addr, local_netmask);
 					} else {
-						PDEBUG("added localnet: netaddr=%s, port=%s, netmask=%s\n",
+						PDEBUG("proxybound: added localnet: netaddr=%s, port=%s, netmask=%s\n",
 						       local_in_addr, local_in_port, local_netmask);
 					}
 					if(num_localnet_addr < MAX_LOCALNET) {
@@ -354,7 +354,7 @@ static void manual_socks5_env(proxy_data *pd, unsigned int *proxy_count, chain_t
 
 static int is_dns_port(unsigned short port) {
     if ((port == 53) || (port == 853)) {
-        if (proxybound_allow_dns) {PDEBUG("allowing direct udp dns request on port: %d\n\n",port);}
+        if (proxybound_allow_dns) {PDEBUG("is_dns_port: allowing direct udp dns request on port: %d\n",port);}
         return 1;
     }
     return 0;
@@ -365,7 +365,7 @@ static int is_dns_port(unsigned short port) {
 
 int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     
-    PDEBUG("\n\n\n\n\n\n\n\n...INJECT... \n\n\n\n\n\n\n\n");
+    PDEBUG("\n\n\n\n\n\n\n\n\n\n\n\n...CONNECT........................................................................................................... \n\n");
 
     int socktype = 0, flags = 0, ret = 0;
     socklen_t optlen = 0;
@@ -398,7 +398,7 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 
     //Allow direct unix
     if (SOCKFAMILY(*addr) == AF_UNIX) {
-        PDEBUG("allowing direct unix connect()\n\n");
+        PDEBUG("connect: allowing direct unix connect()\n");
         return true_connect(sock, addr, len);
     }
 
@@ -408,21 +408,21 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
     #ifdef DEBUG
-    //PDEBUG("localnet: %s; ", inet_ntop(AF_INET, &in_addr_localnet, ip, sizeof(ip)));
-    //PDEBUG("netmask: %s; " , inet_ntop(AF_INET, &in_addr_netmask, ip, sizeof(ip)));
-    PDEBUG("target: %s\n\n", ip);
-    PDEBUG("port: %d\n\n", port);
+    //PDEBUG("connect: localnet: %s; ", inet_ntop(AF_INET, &in_addr_localnet, ip, sizeof(ip)));
+    //PDEBUG("connect: netmask: %s; " , inet_ntop(AF_INET, &in_addr_netmask, ip, sizeof(ip)));
+    PDEBUG("connect: target: %s\n", ip);
+    PDEBUG("connect: port: %d\n", port);
     #endif
 
     //Allow direct local 127.x.x.x
     if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
-        PDEBUG("Local ip detected... ignoring\n\n");
+        PDEBUG("connect: local ip detected... ignoring\n");
         return true_connect(sock, addr, len);
     }
 
     //Allow empty ip
     /*if (!ip[0]) {
-        PDEBUG("Noip... ignoring\n\n");
+        PDEBUG("connect: noip... ignoring\n");
         return true_connect(sock, addr, len);
     }*/
 
@@ -430,10 +430,10 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     //WARNING NORMALLY I DONT BLOCK THESE... 
     if (SOCKFAMILY(*addr) != AF_INET) {
         if (proxybound_allow_leak) {
-            PDEBUG("allowing direct non tcp connect()\n\n");
+            PDEBUG("connect: allowing direct non tcp connect()\n");
             return true_connect(sock, addr, len);
         } else {
-            PDEBUG("blocking direct non tcp connect() \n\n");
+            PDEBUG("connect: blocking direct non tcp connect() \n");
             if (!port) return -1;
             if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_connect(sock, addr, len);} 
             else {return -1;}
@@ -450,10 +450,10 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
     //SOCK_PACKET
     if (socktype != SOCK_STREAM) {
         if (proxybound_allow_leak) {
-            PDEBUG("allowing direct udp connect()\n\n");
+            PDEBUG("connect: allowing direct udp connect()\n");
             return true_connect(sock, addr, len);
         } else {
-            PDEBUG("blocking direct udp connect() \n\n");
+            PDEBUG("connect: blocking direct udp connect() \n");
             if (!port) return -1;
             if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_connect(sock, addr, len);} 
             else {return -1;}
@@ -467,7 +467,7 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	for(i = 0; i < num_localnet_addr && !remote_dns_connect; i++) {
 		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
 			if(!localnet_addr[i].port || localnet_addr[i].port == port) {
-				PDEBUG("accessing localnet using true_connect\n\n");
+				PDEBUG("connect: accessing localnet using true_connect\n");
 				return true_connect(sock, addr, len);
 			}
 		}
@@ -489,12 +489,12 @@ int connect(int sock, const struct sockaddr *addr, socklen_t len) {
 
 //int connect(int sock, const struct sockaddr *addr, socklen_t len)
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+    PDEBUG("bind: got a bind request ------------------------\n");
     //return true_bind(sockfd, addr, addrlen);
-    PDEBUG("\nbind: got a bind request\n");
     
     /* If the real bind doesn't exist, we're stuffed */
     if (true_bind == NULL) {
-        PDEBUG("unresolved symbol: bind\n\n");
+        PDEBUG("bind: unresolved symbol: bind\n");
         return -1;
     }    
     
@@ -534,7 +534,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
     //Allow direct unix
     if (SOCKFAMILY(*addr) == AF_UNIX) {
-        PDEBUG("allowing direct unix bind()\n\n");
+        PDEBUG("bind: allowing direct unix bind()\n");
         return true_bind(sockfd, addr, addrlen);
     }
 
@@ -544,13 +544,15 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
     #ifdef DEBUG
-    PDEBUG("bind target: %s\n\n", ip);
-    PDEBUG("bind port: %d\n\n", port);
+    PDEBUG("------------------------------- \n");
+    PDEBUG("bind: target: %s\n", ip);
+    PDEBUG("bind: port: %d\n", port);
+    PDEBUG("------------------------------- \n");
     #endif
 
     //Allow direct local 127.x.x.x
     if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
-        PDEBUG("Local ip detected... ignoring\n\n");
+        PDEBUG("bind: local ip detected... ignoring\n");
         return true_bind(sockfd, addr, addrlen);
     }
 
@@ -559,7 +561,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 	for(i = 0; i < num_localnet_addr && !remote_dns_bind; i++) {
 		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
 			if(!localnet_addr[i].port || localnet_addr[i].port == port) {
-				PDEBUG("Accessing localnet using true_bind\n\n");
+				PDEBUG("bind: accessing localnet using true_bind\n");
 				return true_bind(sockfd, addr, addrlen);
 			}
 		}
@@ -574,31 +576,34 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     //SOCK_PACKET
 
     #ifdef DEBUG
+    PDEBUG("------------------------------- \n");
     PDEBUG("bind() sock SOCK_STREAM = %d\n",SOCK_STREAM);
     PDEBUG("bind() sock SOCK_DGRAM = %d\n",SOCK_DGRAM);
     PDEBUG("bind() sock SOCK_SEQPACKET = %d\n",SOCK_SEQPACKET);
     PDEBUG("bind() sock SOCK_RAW = %d\n",SOCK_RAW);
     PDEBUG("bind() sock SOCK_RDM = %d\n",SOCK_RDM);
     PDEBUG("bind() sock SOCK_PACKET = %d\n",SOCK_PACKET);
-    PDEBUG("Requested SOCK =%d)\n",socktype);
-    PDEBUG("Requested SOCKFAMILY =%d)\n\n",SOCKFAMILY(*addr));
+    PDEBUG("------------------------------- \n");
+    PDEBUG("bind: requested SOCK =%d)\n",socktype);
+    PDEBUG("bind: requested SOCKFAMILY =%d)\n",SOCKFAMILY(*addr));
+    PDEBUG("------------------------------- \n");
     #endif
 
     //Required to proxify the connection
     //Type Raw, 0.0.0.0, MSG_PROXY
     if ((socktype == SOCK_RAW) && (SOCKFAMILY(*addr) == MSG_PROXY)) {
         if ((ip[0] == '0') && (ip[1] == '.') && (ip[2] == '0') && (ip[3] == '.' ) && (ip[4] == '0') && (ip[5] == '.') && (ip[6] == '0')) {
-            PDEBUG("Bind allowing Raw, 0.0.0.0, MSG_PROXY...\n\n");
+            PDEBUG("bind: bind allowing Raw, 0.0.0.0, MSG_PROXY...\n");
             return true_bind(sockfd, addr, addrlen);
         }
     }
 
     if (socktype != SOCK_STREAM) {
         if (proxybound_allow_leak) {
-            PDEBUG("allowing direct udp bind()\n\n");
+            PDEBUG("bind: allowing direct udp bind()\n");
             return true_bind(sockfd, addr, addrlen);
         } else {
-            PDEBUG("blocking direct udp bind() \n\n");
+            PDEBUG("bind: blocking direct udp bind()\n");
             if (!port) return -1;
             if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_bind(sockfd, addr, addrlen);} 
             else {return -1;}
@@ -624,16 +629,15 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {  
+    PDEBUG("sendto: got sendto request ----------------------\n");
     
     struct sockaddr_in *connaddr;
     int sock_type = -1;
     unsigned int sock_type_len = sizeof(sock_type);
     
-    PDEBUG("sendto: got sendto request\n\n");
-    
     /* If the real connect doesn't exist, we're stuffed */
     if (true_sendto == NULL) {
-        PDEBUG("unresolved symbol: sendto\n\n");
+        PDEBUG("sendto: unresolved symbol: sendto\n");
         return -1;        
     }
     
@@ -652,7 +656,7 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
     
     //WARNING NORMALLY I DONT BLOCK THEASE != AF_INET... 
     if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
-        PDEBUG("sendto: is on a udp stream\n\n");
+        PDEBUG("sendto: is on a udp stream\n");
         
         char ip[256];
         struct in_addr *p_addr_in;
@@ -660,16 +664,16 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
         p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
         inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
-        PDEBUG("sendto: ip: %s\n\n",ip);
+        PDEBUG("sendto: ip: %s\n",ip);
         
         //Allow local
         if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
             return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
         else
-            PDEBUG("sendto: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n\n");
+            PDEBUG("sendto: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n");
         
         //Blocking the connection
-        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendto()\n\n"); else {
+        if (proxybound_allow_leak) PDEBUG("sendto: allowing direct udp sendto()\n"); else {
             unsigned short port;
             port = ntohs(((struct sockaddr_in *) connaddr)->sin_port);
             if (!port) return -1;
@@ -685,19 +689,19 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
 }
 
 ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
+    PDEBUG("send: got send request --------------------------\n");
     //The send() call may be used only when the socket is in a connected state (so that the intended recipient is known)
     //To avoid any hack this is watched for leak too
     
     /* If the real connect doesn't exist, we're stuffed */
     if (true_send == NULL) {
-        PDEBUG("unresolved symbol: send\n\n");
+        PDEBUG("send: unresolved symbol: send\n");
         return -1;        
     }
     
     //return true_send(sockfd, buf, len, flags);
     if (proxybound_allow_leak) {
-        PDEBUG("send: got send request\n");
-        PDEBUG("allowing direct send()\n\n"); 
+        PDEBUG("send: allowing direct send()\n"); 
         return true_send(sockfd, buf, len, flags);
         //Already handled in connect ? 
         //TODO deeper handling (socktype)
@@ -715,7 +719,7 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
             //SOCK_RAW
             //SOCK_RDM
             //SOCK_PACKET
-            PDEBUG("send: blocking send request type SOCK_DGRAM/SOCK_SEQPACKET/SOCK_RAW/SOCK_RDM/SOCK_PACKET\n\n");
+            PDEBUG("send: blocking send request type SOCK_DGRAM/SOCK_SEQPACKET/SOCK_RAW/SOCK_RDM/SOCK_PACKET\n");
             return -1;
             //TODO may block dns here
         } else {
@@ -726,16 +730,15 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
 }
     
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
-
+    PDEBUG("sendmsg: got sendmsg request --------------------\n");
+    
     struct sockaddr_in *connaddr;
     int sock_type = -1;
     unsigned int sock_type_len = sizeof(sock_type);
-    
-    PDEBUG("sendmsg: got sendmsg request\n\n");
 
     /* If the real connect doesn't exist, we're stuffed */
     if (true_sendmsg == NULL) {
-        PDEBUG("unresolved symbol: sendmsg\n\n");
+        PDEBUG("sendmsg: unresolved symbol: sendmsg\n");
         return -1;
     }
     
@@ -754,7 +757,7 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
 
     //WARNING NORMALLY I DONT BLOCK THEASE != AF_INET... 
     if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
-        PDEBUG("sendmsg: is on a udp stream\n\n");
+        PDEBUG("sendmsg: is on a udp stream\n");
        
         char ip[256];
         struct in_addr *p_addr_in;
@@ -762,16 +765,16 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
         p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
         inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
  
-        PDEBUG("sendmsg: ip: %s\n\n",ip);
+        PDEBUG("sendmsg: ip: %s\n",ip);
         
         //Allow local
         if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))
             return true_sendmsg(sockfd, msg, flags);
         else
-            PDEBUG("sendmsg: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n\n");
+            PDEBUG("sendmsg: is on a udp stream with a non-local destination, may be a dns request: rejecting.\n");
 
         //Blocking the connection
-        if (proxybound_allow_leak) PDEBUG("allowing direct udp sendmsg()\n\n"); else {
+        if (proxybound_allow_leak) PDEBUG("sendmsg: allowing direct udp sendmsg()\n"); else {
             unsigned short port;
             port = ntohs(((struct sockaddr_in *) connaddr)->sin_port);
             if (!port) return -1;
@@ -808,9 +811,11 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
 static struct gethostbyname_data ghbndata;
 
 struct hostent *gethostbyname(const char *name) {
+    PDEBUG("gethostbyname: got gethostbyname request --------\n");
+    
 	INIT();
 
-	PDEBUG("gethostbyname: %s\n", name);
+	PDEBUG("gethostbyname: gethostbyname: %s\n", name);
 
 	if(proxybound_resolver)
 		return proxy_gethostbyname(name, &ghbndata);
@@ -821,6 +826,8 @@ struct hostent *gethostbyname(const char *name) {
 }
 
 int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res) {
+    PDEBUG("getaddrinfo: got getaddrinfo request ------------\n");
+    
 	int ret = 0;
 
 	INIT();
@@ -836,9 +843,11 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
 }
 
 void freeaddrinfo(struct addrinfo *res) {
+    PDEBUG("freeaddrinfo: got freeaddrinfo request ----------\n");
+        
 	INIT();
 
-	PDEBUG("freeaddrinfo %p \n", res);
+	PDEBUG("freeaddrinfo: %p \n", res);
 
 	if(!proxybound_resolver)
 		true_freeaddrinfo(res);
@@ -848,6 +857,8 @@ void freeaddrinfo(struct addrinfo *res) {
 }
 
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags) {
+    PDEBUG("getnameinfo: got getnameinfo request ------------\n");
+        
 	char ip_buf[16];
 	int ret = 0;
 
@@ -868,7 +879,9 @@ int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, socklen_
 	return ret;
 }
 
-struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type) {
+struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type) {    
+    PDEBUG("gethostbyaddr: got gethostbyaddr request --------\n");
+
 	static char buf[16];
 	static char ipv4[4];
 	static char *list[2];
@@ -877,13 +890,14 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type) {
 
 	INIT();
 
-	PDEBUG("TODO: proper gethostbyaddr hook\n");
+    //TODO: proper gethostbyaddr hook
+	PDEBUG("hostent: todo: proper gethostbyaddr hook\n");
 
 	if(!proxybound_resolver)
 		return true_gethostbyaddr(addr, len, type);
 	else {
 
-		PDEBUG("len %u\n", len);
+		PDEBUG("hostent: len %u\n", len);
 		if(len != 4)
 			return NULL;
 		he.h_name = buf;
