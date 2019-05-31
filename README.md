@@ -1,16 +1,16 @@
-ProxyBound v5.50
+ProxyBound v5.60
 ================
 
-ProxyBound is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4a/5 or HTTP proxies. This is based on  proxychains-ng by rofl0r, proxychains by haad and torsocks by dgoulet
+ProxyBound force any unix application to use a specific proxy and prevent it from leaking the original ip; Technically, ProxyBound is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4A/5 or HTTP proxies. This project is based on proxychain by [netcreature](https://sourceforge.net/u/netcreature/profile/), proxychains-ng by rofl0r, proxychains by haad and torsocks by dgoulet
   
 Features:
 =========
 
 - Proxify applications (like mainstream proxychains)
 - Works with tcp (like mainstream proxychains)
-- No leaks over udp/raw/icmp/etc...
+- No leaks over udp/icmp/etc... (INET & INET6)
 - Unsupported protocols are blocked
-- Works with chrome/chromium/similar 
+- Support chrome/chromium/skype/similar 
 - Incompatible applications are terminated with a proper message
 - Many additional settings over environment variable
 - etc.
@@ -25,7 +25,7 @@ Used environment variable:
 - PROXYBOUND_SOCKS5_PORT:       Socks 5 port (default not used)
 - PROXYBOUND_FORCE_DNS:         Force dns resolv requests through (1 or 0, default 1)
 - PROXYBOUND_ALLOW_DNS:         Allow direct dns, allow udp port 53 and 853 (1 or 0, default 0)
-- PROXYBOUND_ALLOW_LEAKS:       Allow/Block unproxyfied protocols "UDP/ICMP/RAW", blocked by default (1 or 0, default 0)
+- PROXYBOUND_ALLOW_LEAKS:       Allow/Block unproxyfied protocols "UDP/ICMP/ETC", blocked by default (1 or 0, default 0)
 - PROXYBOUND_WORKING_INDICATOR: Create '/tmp/proxybound.tmp' when dll is working as intended (1 or 0, default 0)
 ```
 
@@ -34,12 +34,6 @@ How it works:
 
 Proxybound hook libc functions like connect(), dynamic loader facilities are used, namely dl_sym() and LD_PRELOAD thus dynamically linked programs are required.
   
-Limits : 
-========
-
-- IPv6 is blocked and is not supported
-- Some applications are incompatible (they will be explicitly terminated 2 sec after startup, to avoid leaks)
-
 Install:
 ========
 
@@ -49,7 +43,7 @@ Install:
   [optional] sudo make install
 ```
 
-if you dont install, you can use proxybound from the build directory like this: `./proxybound -f src/proxybound.conf telnet google.com 80`
+If you dont install, you can use proxybound from the build directory like this: `./proxybound -f src/proxybound.conf telnet google.com 80`
 
 Install debug version :
 =======================
@@ -62,6 +56,18 @@ Install debug version :
 
 Changelog:
 ==========
+
+**Version 5.60:**
+
+- Fix skype compatibility
+- Improve no leak feature
+- Improve debug version
+- Improve output/log messages
+- Rewrite main hooked functions connect
+- Rewrite main hooked functions bind
+- Rewrite main hooked functions sendmsg
+- Rewrite main hooked functions sendto
+- Rewrite main hooked functions send
 
 **Version 5.50:**
 
@@ -127,6 +133,12 @@ Changelog:
 
 - Import security issue fix CVE-2015-3887 
 - Used v4.3 (4.03) for initial fork
+
+Limits : 
+========
+
+- IPv6 is blocked and not supported (currently partially supported)
+- Some applications are incompatible (they will be explicitly terminated 2 sec after startup, to avoid leaks)
 
 Configuration:
 ==============

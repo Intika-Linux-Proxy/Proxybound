@@ -225,15 +225,15 @@ static int timed_connect(int sock, const struct sockaddr *addr, socklen_t len) {
 	pfd[0].events = POLLOUT;
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	ret = true_connect(sock, addr, len);
-	PDEBUG("\nconnect ret=%d\n", ret);
+	PDEBUG("timed_connect: core.c: ret=%d\n", ret);
 	
 	if(ret == -1 && errno == EINPROGRESS) {
 		ret = poll_retry(pfd, 1, tcp_connect_time_out);
-		PDEBUG("\npoll ret=%d\n", ret);
+		PDEBUG("timed_connect: core.c: poll ret=%d\n", ret);
 		if(ret == 1) {
 			value_len = sizeof(socklen_t);
 			getsockopt(sock, SOL_SOCKET, SO_ERROR, &value, &value_len);
-			PDEBUG("\nvalue=%d\n", value);
+			PDEBUG("timed_connect: core.c: value=%d\n", value);
 			if(!value)
 				ret = 0;
 			else
@@ -259,7 +259,7 @@ static int tunnel_to(int sock, ip_type ip, unsigned short port, proxy_type pt, c
 	char *dns_name = NULL;
 	size_t dns_len = 0;
 
-	PDEBUG("tunnel_to()\n");
+	PDEBUG("tunnel_to: core.c: init tunnel_to()\n");
 
 	// we use ip addresses with 224.* to lookup their dns name in our table, to allow remote DNS resolution
 	// the range 224-255.* is reserved, and it won't go outside (unless the app does some other stuff with
@@ -274,13 +274,13 @@ static int tunnel_to(int sock, ip_type ip, unsigned short port, proxy_type pt, c
 			goto err;
 	}
 	
-	PDEBUG("host dns %s\n", dns_name ? dns_name : "<NULL>");
+	PDEBUG("tunnel_to: core.c: host dns %s\n", dns_name ? dns_name : "<NULL>");
 
 	size_t ulen = strlen(user);
 	size_t passlen = strlen(pass);
 
 	if(ulen > 0xFF || passlen > 0xFF || dns_len > 0xFF) {
-		proxybound_write_log(LOG_PREFIX "error: maximum size of 255 for user/pass or domain name!\n");
+		proxybound_write_log(LOG_PREFIX "ERROR: USER+PASS/DOMAIN SIZE EXCEEDS MAX VALUE OF 255!\n\n\n");
 		goto err;
 	}
 
@@ -493,7 +493,7 @@ static int tunnel_to(int sock, ip_type ip, unsigned short port, proxy_type pt, c
 	return SOCKET_ERROR;
 }
 
-#define TP " ... "
+#define TP "... "
 #define DT "Dynamic chain"
 #define ST "Strict chain"
 #define RT "Random chain"
@@ -507,8 +507,7 @@ static int start_chain(int *fd, proxy_data * pd, char *begin_mark) {
 		goto error;
 	
 	pc_stringfromipv4(&pd->ip.octet[0], ip_buf);
-	proxybound_write_log(LOG_PREFIX "%s " TP " %s:%d ",
-			      begin_mark, ip_buf, htons(pd->port));
+	proxybound_write_log(LOG_PREFIX "%s " TP "%s:%d\n", begin_mark, ip_buf, htons(pd->port));
 	pd->ps = PLAY_STATE;
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -521,7 +520,7 @@ static int start_chain(int *fd, proxy_data * pd, char *begin_mark) {
 	pd->ps = BUSY_STATE;
 	return SUCCESS;
 	error1:
-	proxybound_write_log(TP " timeout\n");
+	proxybound_write_log(LOG_PREFIX TP "timeout\n");
 	error:
 	if(*fd != -1)
 		close(*fd);
@@ -599,7 +598,7 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 	char *hostname;
 	char ip_buf[16];
 
-	PDEBUG("chain_step()\n");
+	PDEBUG("chain_step: core.c: init chain_step()\n");
 
 	if(pto->ip.octet[0] == remote_dns_subnet) {
 		hostname = string_from_internal_ip(pto->ip);
@@ -611,7 +610,7 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 		hostname = ip_buf;
 	}
 
-	proxybound_write_log(TP " %s:%d ", hostname, htons(pto->port));
+	proxybound_write_log(LOG_PREFIX TP "%s:%d\n", hostname, htons(pto->port));
 	retcode = tunnel_to(ns, pto->ip, pto->port, pfrom->pt, pfrom->user, pfrom->pass);
 	switch (retcode) {
 		case SUCCESS:
@@ -619,12 +618,12 @@ static int chain_step(int ns, proxy_data * pfrom, proxy_data * pto) {
 			break;
 		case BLOCKED:
 			pto->ps = BLOCKED_STATE;
-			proxybound_write_log("<--denied\n");
+			proxybound_write_log(LOG_PREFIX "denied\n");
 			close(ns);
 			break;
 		case SOCKET_ERROR:
 			pto->ps = DOWN_STATE;
-			proxybound_write_log("<--socket error or timeout!\n");
+			proxybound_write_log(LOG_PREFIX "socket error or timeout!\n");
 			close(ns);
 			break;
 	}
@@ -643,7 +642,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 
 	p3 = &p4;
 
-	PDEBUG("connect_proxy_chain\n");
+	PDEBUG("connect: core.c: connect_proxy_chain\n");
 
 	again:
 
@@ -660,7 +659,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				if(!p2)
 					break;
 				if(SUCCESS != chain_step(ns, p1, p2)) {
-					PDEBUG("GOTO AGAIN 1\n");
+					PDEBUG("connect: core.c: goto again x1\n");
 					goto again;
 				}
 				p1 = p2;
@@ -676,18 +675,18 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 			alive_count = calc_alive(pd, proxy_count);
 			offset = 0;
 			if(!(p1 = select_proxy(FIFOLY, pd, proxy_count, &offset))) {
-				PDEBUG("select_proxy failed\n");
+				PDEBUG("connect: core.c: select_proxy failed\n");
 				goto error_strict;
 			}
 			if(SUCCESS != start_chain(&ns, p1, ST)) {
-				PDEBUG("start_chain failed\n");
+				PDEBUG("connect: core.c: start_chain failed\n");
 				goto error_strict;
 			}
 			while(offset < proxy_count) {
 				if(!(p2 = select_proxy(FIFOLY, pd, proxy_count, &offset)))
 					break;
 				if(SUCCESS != chain_step(ns, p1, p2)) {
-					PDEBUG("chain_step failed\n");
+					PDEBUG("connect: core.c: chain_step failed\n");
 					goto error_strict;
 				}
 				p1 = p2;
@@ -712,7 +711,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 				if(!(p2 = select_proxy(RANDOMLY, pd, proxy_count, &offset)))
 					goto error_more;
 				if(SUCCESS != chain_step(ns, p1, p2)) {
-					PDEBUG("GOTO AGAIN 2\n");
+					PDEBUG("connect: core.c: goto again x2\n");
 					goto again;
 				}
 				p1 = p2;
@@ -725,7 +724,7 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 
 	}
 
-	proxybound_write_log(TP " OK\n");
+	proxybound_write_log(LOG_PREFIX TP "ok\n");
 	dup2(ns, sock);
 	close(ns);
 	return 0;
@@ -736,9 +735,9 @@ int connect_proxy_chain(int sock, ip_type target_ip,
 	return -1;
 
 	error_more:
-	proxybound_write_log("\n!!!need more proxies!!!\n");
+	proxybound_write_log(LOG_PREFIX "ERROR: NEED MORE PROXIES!\n\n\n");
 	error_strict:
-	PDEBUG("error\n");
+	PDEBUG("connect: core.c: error\n");
 	
 	release_all(pd, proxy_count);
 	if(ns != -1)
@@ -800,7 +799,7 @@ struct hostent *proxy_gethostbyname(const char *name, struct gethostbyname_data*
 		for(i = 0; i < internal_ips.counter; i++) {
 			if(internal_ips.list[i]->hash == hash && !strcmp(name, internal_ips.list[i]->string)) {
 				data->resolved_addr = make_internal_ip(i);
-				PDEBUG("got cached ip for %s\n", name);
+				PDEBUG("proxy_gethostbyname: core.c: got cached ip for %s\n", name);
 				goto have_ip;
 			}
 		}
@@ -808,7 +807,7 @@ struct hostent *proxy_gethostbyname(const char *name, struct gethostbyname_data*
     
 	// grow list if needed.
 	if(internal_ips.capa < internal_ips.counter + 1) {
-		PDEBUG("realloc\n");
+		PDEBUG("proxy_gethostbyname: core.c: realloc\n");
 		new_mem = realloc(internal_ips.list, (internal_ips.capa + 16) * sizeof(void *));
 		if(new_mem) {
 			internal_ips.capa += 16;
@@ -816,7 +815,7 @@ struct hostent *proxy_gethostbyname(const char *name, struct gethostbyname_data*
 		} else {
     // goto ------------
 	oom:
-			proxybound_write_log("out of mem\n");
+			proxybound_write_log(LOG_PREFIX "ERROR: OUT OF MEMORY!\n\n\n");
 			goto err_plus_unlock;
 		}
 	}
@@ -830,7 +829,7 @@ struct hostent *proxy_gethostbyname(const char *name, struct gethostbyname_data*
 	if(!new_mem)
 		goto oom;
 
-	PDEBUG("creating new entry %d for ip of %s\n", (int) internal_ips.counter, name);
+	PDEBUG("proxy_gethostbyname: core.c: creating new entry %d for ip of %s\n", (int) internal_ips.counter, name);
 
 	internal_ips.list[internal_ips.counter] = new_mem;
 	internal_ips.list[internal_ips.counter]->hash = hash;

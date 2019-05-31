@@ -363,132 +363,6 @@ static int is_dns_port(unsigned short port) {
 /**************************************************************************************************************************************************************/
 /*******  HOOK FUNCTIONS  *************************************************************************************************************************************/
 
-int connect(int sock, const struct sockaddr *addr, socklen_t len) {    
-    PDEBUG("\n\n\n\n\n\n\n\n\n\n\n\n...CONNECT........................................................................................................... \n\n");
-
-    int socktype = 0, flags = 0, ret = 0;
-    socklen_t optlen = 0;
-    ip_type dest_ip;
-    char ip[256];
-    struct in_addr *p_addr_in;
-    unsigned short port;
-    size_t i;
-    int remote_dns_connect = 0;
-    INIT();
-    optlen = sizeof(socktype);
-    getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &optlen);
-
-    // Sock family list (not complete) 
-    // AF_UNIX_CCSID    /*     - Unix domain sockets 		*/
-    // AF_UNIX          /*  1  - Unix domain sockets        */
-    // AF_INET          /*  2  - Internet IP Protocol 	    */
-    // AF_INET6         /*  10 - IPv6                       */
-    // AF_UNSPEC	    /*  0                               */
-    // AF_AX25			/*  3  - Amateur Radio AX.25 		*/
-    // AF_IPX		    /*  4  - Novell IPX 			    */
-    // AF_APPLETALK		/*  5  - Appletalk DDP 	           	*/
-    // AF_NETROM		/*  6  - Amateur radio NetROM 	    */
-    // AF_BRIDGE		/*  7  - Multiprotocol bridge 	    */
-    // AF_AAL5			/*  8  - Reserved for Werner's ATM 	*/
-    // AF_X25			/*  9  - Reserved for X.25 project 	*/
-    // AF_MAX			/*  12 - For now..                  */
-    // PF_FILE
-    // ... 
-
-    //Allow direct unix
-    if (SOCKFAMILY(*addr) == AF_UNIX) {
-        PDEBUG("connect: allowing direct unix connect()\n");
-        return true_connect(sock, addr, len);
-    }
-
-    p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
-    port = ntohs(((struct sockaddr_in *) addr)->sin_port);
-    //inet_ntop - convert IPv4 and IPv6 addresses from binary to text form
-    inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
-
-    #ifdef DEBUG
-    //PDEBUG("connect: localnet: %s; ", inet_ntop(AF_INET, &in_addr_localnet, ip, sizeof(ip)));
-    //PDEBUG("connect: netmask: %s; " , inet_ntop(AF_INET, &in_addr_netmask, ip, sizeof(ip)));
-    PDEBUG("connect: target: %s\n", ip);
-    PDEBUG("connect: port: %d\n", port);
-    #endif
-
-    //Allow direct local 127.x.x.x
-    if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
-        PDEBUG("connect: local ip detected... ignoring\n");
-        return true_connect(sock, addr, len);
-    }
-
-    //Allow empty ip
-    /*if (!ip[0]) {
-        PDEBUG("connect: noip... ignoring\n");
-        return true_connect(sock, addr, len);
-    }*/
-    
-    //SOCK_STREAM
-    //SOCK_DGRAM
-    //SOCK_SEQPACKET
-    //SOCK_RAW
-    //SOCK_RDM
-    //SOCK_PACKET
-    //Block unsupported sock
-    //WARNING: this block other unrelated network connect  
-    if ((socktype != SOCK_STREAM) || (SOCKFAMILY(*addr) != AF_INET)) {
-        if (proxybound_allow_leak) {
-            PDEBUG("connect: allowing direct udp connect()\n");
-            return true_connect(sock, addr, len);
-        } else {
-            PDEBUG("connect: blocking direct udp connect()\n");
-            if (!port) {return -1;}
-            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_connect(sock, addr, len);} 
-            else {return -1;}
-            return -1; //Au cas ou
-        }
-    }
-
-	// Check if connect called from proxydns
-    remote_dns_connect = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
-
-	for(i = 0; i < num_localnet_addr && !remote_dns_connect; i++) {
-		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
-			if(!localnet_addr[i].port || localnet_addr[i].port == port) {
-				PDEBUG("connect: accessing localnet using true_connect\n");
-				return true_connect(sock, addr, len);
-			}
-		}
-	}
-
-	flags = fcntl(sock, F_GETFL, 0);
-	if(flags & O_NONBLOCK) {fcntl(sock, F_SETFL, !O_NONBLOCK);}
-	dest_ip.as_int = SOCKADDR(*addr);
-	ret = connect_proxy_chain(sock, dest_ip, SOCKPORT(*addr), proxybound_pd, proxybound_proxy_count, proxybound_ct, proxybound_max_chain);
-
-	fcntl(sock, F_SETFL, flags);
-	if(ret != SUCCESS)
-		errno = ECONNREFUSED;
-	return ret;
-}
-
-//int connect(int sock, const struct sockaddr *addr, socklen_t len)
-int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-    PDEBUG("bind: got a bind request ------------------------\n");
-    
-    /* If the real bind doesn't exist, we're stuffed */
-    if (true_bind == NULL) {
-        PDEBUG("bind: unresolved symbol: bind\n");
-        return -1;
-    }
-    
-    int socktype = 0;
-    socklen_t optlen = 0;
-    char ip[256];
-    struct in_addr *p_addr_in;
-    unsigned short port;
-    size_t i;
-    int remote_dns_bind = 0;
-    optlen = sizeof(socktype);
-    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &socktype, &optlen);
-
     // Sock family list (not complete) 
     // AF_UNIX_CCSID    /*     - Unix domain sockets 		*/
     // AF_UNIX          /*  1  - Unix domain sockets        */
@@ -507,10 +381,63 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     // PF_FILE          /*  ?? - ...                        */
     // ... 
 
+    //SOCK_STREAM       // 1
+    //SOCK_DGRAM        // 2
+    //SOCK_SEQPACKET    // 5
+    //SOCK_RAW          // 3
+    //SOCK_RDM          // 4
+    //SOCK_PACKET       // 10
+    // ...
+
+    //struct msghdr {
+    //    void         *msg_name;       /* optional address */
+    //    socklen_t     msg_namelen;    /* size of address */
+    //    struct iovec *msg_iov;        /* scatter/gather array */
+    //    size_t        msg_iovlen;     /* # elements in msg_iov */
+    //    void         *msg_control;    /* ancillary data, see below */
+    //    size_t        msg_controllen; /* ancillary data buffer len */
+    //    int           msg_flags;      /* flags on received message */
+    //};
+
+/**************************************************************************************************************************************************************/
+
+int connect(int sock, const struct sockaddr *addr, socklen_t len) {    
+    PDEBUG("\n\n\n\n\n\n\n\n\n\n\n\n...CONNECT........................................................................................................... \n\n");
+
+    if (true_connect == NULL) {
+        PDEBUG("violation: connect: rejecting, unresolved symbol: connect\n");
+        errno = ECONNREFUSED; return -1;
+    }
+    
+    int socktype = 0, flags = 0, ret = 0;
+    socklen_t optlen = 0;
+    ip_type dest_ip;
+    char ip[256];
+    struct in_addr *p_addr_in;
+    unsigned short port;
+    size_t i;
+    int remote_dns_connect = 0;
+    INIT();
+    optlen = sizeof(socktype);
+    getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &optlen);    
+    
+    if (!socktype) {
+        PDEBUG("violation: connect: allowing, no socket_type\n");
+        return true_connect(sock, addr, len);
+    }
+    
+    /*if ((SOCKFAMILY(*addr) < 1) && (!proxybound_allow_leak)) {
+        PDEBUG("violation: connect: rejecting, unresolved, socket family\n");
+        errno = ECONNREFUSED; return -1;
+    }*/
+    
     //Allow direct unix
-    if (SOCKFAMILY(*addr) == AF_UNIX) {
-        PDEBUG("bind: allowing direct unix bind()\n");
-        return true_bind(sockfd, addr, addrlen);
+    if ((SOCKFAMILY(*addr) != AF_INET) && (SOCKFAMILY(*addr) != AF_INET6) ) {
+        PDEBUG("connect: requested SOCK =%d\n",socktype);
+        PDEBUG("connect: requested SOCKFAMILY =%d\n",SOCKFAMILY(*addr));
+        PDEBUG("-------------------------------------------------\n");
+        PDEBUG("connect: allowing non inet connect()\n");
+        return true_connect(sock, addr, len);
     }
 
     p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
@@ -519,19 +446,106 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
 
     #ifdef DEBUG
-    PDEBUG("------------------------------- \n");
-    PDEBUG("bind: target: %s\n", ip);
-    PDEBUG("bind: port: %d\n", port);
-    PDEBUG("------------------------------- \n");
+    //PDEBUG("connect: localnet: %s\n", inet_ntop(AF_INET, &in_addr_localnet, ip, sizeof(ip)));
+    //PDEBUG("connect: netmask: %s\n" , inet_ntop(AF_INET, &in_addr_netmask, ip, sizeof(ip)));    
+    if (strlen(ip) == 0) {PDEBUG("violation: connect: null ip\n");} else {PDEBUG("connect: target: %s\n", ip);}
+    if (port < 0) {PDEBUG("violation: connect: null port\n");} else {PDEBUG("connect: port: %d\n", port);}    
     #endif
 
     //Allow direct local 127.x.x.x
-    if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
+    if ((strlen(ip) != 0) && (ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
+        PDEBUG("connect: local ip detected... ignoring\n");
+        return true_connect(sock, addr, len);
+    }
+    
+	//Check if connect called from proxydns
+    remote_dns_connect = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
+	for(i = 0; i < num_localnet_addr && !remote_dns_connect; i++) {
+		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
+			if(!localnet_addr[i].port || localnet_addr[i].port == port) {
+				PDEBUG("connect: accessing localnet using true_connect\n");
+				return true_connect(sock, addr, len);
+			}
+		}
+	}
+    
+    //Block unsupported sock
+    //WARNING: this block other unrelated network connect  
+    if (socktype != SOCK_STREAM) {
+        if (proxybound_allow_leak) {
+            PDEBUG("connect: allowing leak connect()\n");
+            return true_connect(sock, addr, len);
+        } else {            
+            if (port < 0) {PDEBUG("violation: connect: rejecting leak connect() null port\n"); errno = ECONNREFUSED; return -1;}
+            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_connect(sock, addr, len);}
+            PDEBUG("connect: rejecting leak connect()\n"); errno = ECONNREFUSED; return -1;
+        }
+    }
+    
+    //Proxify connect
+	flags = fcntl(sock, F_GETFL, 0);
+	if(flags & O_NONBLOCK) {fcntl(sock, F_SETFL, !O_NONBLOCK);}
+	dest_ip.as_int = SOCKADDR(*addr);
+	ret = connect_proxy_chain(sock, dest_ip, SOCKPORT(*addr), proxybound_pd, proxybound_proxy_count, proxybound_ct, proxybound_max_chain);
+
+	fcntl(sock, F_SETFL, flags);
+	if(ret != SUCCESS) errno = ECONNREFUSED;
+	return ret;
+}
+
+//int connect(int sock, const struct sockaddr *addr, socklen_t len)
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+    PDEBUG("bind: got a bind request ------------------------\n");
+    
+    if (true_bind == NULL) {
+        PDEBUG("violation: bind: rejecting, unresolved symbol: bind\n");
+        errno = EFAULT; return -1;
+    }
+    
+    int socktype = 0;
+    socklen_t optlen = 0;
+    char ip[256];
+    struct in_addr *p_addr_in;
+    unsigned short port;
+    size_t i;
+    int remote_dns_bind = 0;
+    optlen = sizeof(socktype);
+    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &socktype, &optlen);
+    
+    if (!socktype) {
+        PDEBUG("violation: bind: allowing, no socket_type\n");
+        return true_bind(sockfd, addr, addrlen);
+    }
+
+    /*if ((SOCKFAMILY(*addr) < 1) && (!proxybound_allow_leak)) {
+        PDEBUG("violation: bind: rejecting, unresolved, socket family\n");
+        errno = EFAULT; return -1;
+    }*/
+        
+    //Allow direct unix
+    if ((SOCKFAMILY(*addr) != AF_INET) && (SOCKFAMILY(*addr) != AF_INET6) ) {
+        PDEBUG("bind: allowing non inet sock bind()\n");
+        return true_bind(sockfd, addr, addrlen);
+    }
+    
+    p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
+    port = ntohs(((struct sockaddr_in *) addr)->sin_port);
+    //inet_ntop - convert IPv4 and IPv6 addresses from binary to text form
+    inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
+
+    #ifdef DEBUG
+    if (strlen(ip) == 0) {PDEBUG("violation: bind: null ip\n");} else {PDEBUG("bind: target: %s\n", ip);}
+    if (port < 0) {PDEBUG("violation: bind: null port\n");} else {PDEBUG("bind: port: %d\n", port);}
+    PDEBUG("-------------------------------------------------\n");
+    #endif
+
+    //Allow direct local 127.x.x.x
+    if ((strlen(ip) == 0) && (ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
         PDEBUG("bind: local ip detected... ignoring\n");
         return true_bind(sockfd, addr, addrlen);
     }
 
-	// Check if bind called from proxydns
+	//Check if bind called from proxydns
     remote_dns_bind = (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
 	for(i = 0; i < num_localnet_addr && !remote_dns_bind; i++) {
 		if((localnet_addr[i].in_addr.s_addr & localnet_addr[i].netmask.s_addr) == (p_addr_in->s_addr & localnet_addr[i].netmask.s_addr)) {
@@ -543,111 +557,190 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 	}
 
     #ifdef DEBUG
-    PDEBUG("------------------------------- \n");
     PDEBUG("bind() sock SOCK_STREAM = %d\n",SOCK_STREAM);
     PDEBUG("bind() sock SOCK_DGRAM = %d\n",SOCK_DGRAM);
     PDEBUG("bind() sock SOCK_SEQPACKET = %d\n",SOCK_SEQPACKET);
     PDEBUG("bind() sock SOCK_RAW = %d\n",SOCK_RAW);
     PDEBUG("bind() sock SOCK_RDM = %d\n",SOCK_RDM);
     PDEBUG("bind() sock SOCK_PACKET = %d\n",SOCK_PACKET);
-    PDEBUG("------------------------------- \n");
+    PDEBUG("-------------------------------------------------\n");
     PDEBUG("bind: requested SOCK =%d\n",socktype);
     PDEBUG("bind: requested SOCKFAMILY =%d\n",SOCKFAMILY(*addr));
-    PDEBUG("------------------------------- \n");
+    PDEBUG("-------------------------------------------------\n");
     #endif
 
-    //Required for proxify
-    //Type Raw, 0.0.0.0, MSG_PROXY
-    //if ((socktype == SOCK_RAW) && (SOCKFAMILY(*addr) == MSG_PROXY)) {
-    if ((SOCKFAMILY(*addr) == MSG_PROXY)) {
+    //Required for proxify, type raw, 0.0.0.0, MSG_PROXY
+    /*if ((socktype == SOCK_RAW) && (SOCKFAMILY(*addr) == MSG_PROXY)) {
         if ((ip[0] == '0') && (ip[1] == '.') && (ip[2] == '0') && (ip[3] == '.' ) && (ip[4] == '0') && (ip[5] == '.') && (ip[6] == '0')) {
             PDEBUG("bind: bind allowing, 0.0.0.0, MSG_PROXY...\n");
             return true_bind(sockfd, addr, addrlen);
         }
-    }
+    }*/
 
-    //SOCK_STREAM
-    //SOCK_DGRAM
-    //SOCK_SEQPACKET
-    //SOCK_RAW
-    //SOCK_RDM
-    //SOCK_PACKET
     //Block unsupported sock
     //WARNING: this block other unrelated network connect 
-    if (socktype != SOCK_STREAM) {
-        if (proxybound_allow_leak) {
-            PDEBUG("bind: allowing direct udp bind()\n");
-            return true_bind(sockfd, addr, addrlen);
-        } else {
-            PDEBUG("bind: blocking direct udp bind()\n");
-            if (!port) {PDEBUG("bind: blocking direct udp bind()\n"); return -1;}
-            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_bind(sockfd, addr, addrlen);} 
-            else {
-                PDEBUG("bind: blocking direct udp bind()\n");
-                return -1;
-            }
-            PDEBUG("bind: blocking direct udp bind()\n");
-            return -1; //Au cas ou
-        }
+    if ((socktype != SOCK_STREAM) && (!proxybound_allow_leak)) {
+        if (port < 0) {PDEBUG("violation: bind: rejecting un-managed protocol bind() null port\n"); errno = EFAULT; return -1;}
+        if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_bind(sockfd, addr, addrlen);}
+        PDEBUG("bind: rejecting un-managed protocol bind()\n");
+        errno = EFAULT; return -1;
     } else {
-        //SOCK_STREAM TCP
         return true_bind(sockfd, addr, addrlen);
     }
 
     if (proxybound_allow_leak) {
         return true_bind(sockfd, addr, addrlen);
-    } else {
-        PDEBUG("bind: blocking direct udp bind()\n");
-        return -1;
     }
     
-    PDEBUG("bind: blocking direct udp bind()\n");
-    return -1;
+    PDEBUG("bind: rejecting un-managed protocol bind()\n");
+    errno = EFAULT; return -1;
+}
+
+ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
+    PDEBUG("sendmsg: got sendmsg request --------------------\n");
+    return true_sendmsg(sockfd, msg, flags);
+    
+    if (true_sendmsg == NULL) {
+        PDEBUG("violation: sendmsg: rejecting, unresolved symbol: sendmsg\n");
+        errno = EFAULT; return -1;
+    }
+    
+    int sock_type = -1;
+    unsigned int sock_type_len = sizeof(sock_type);    
+    const struct sockaddr_in *addr = (const struct sockaddr_in *)msg->msg_name; //optional adress 
+    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len); //get the type of the socket
+    
+    if (!sock_type) {
+        PDEBUG("violation: sendmsg: allowing unknown sock\n");
+        return true_sendmsg(sockfd, msg, flags);
+    }
+    
+    if (addr) {
+        if (addr->sin_family) {
+            PDEBUG("sendmsg: sock familly %d\n",addr->sin_family);
+            if ((addr->sin_family != AF_INET) && (addr->sin_family != AF_INET6)) {
+                PDEBUG("sendmsg: allowing non inet\n");
+                return true_sendmsg(sockfd, msg, flags);
+            }
+        } else {
+            //This require connect on the first place... 
+            PDEBUG("violation: sendmsg: allowing unknown sin_family\n");
+            return true_sendmsg(sockfd, msg, flags);
+        }
+    } else {
+        //This require connect on the first place... 
+        PDEBUG("violation: sendmsg: allowing unknown addr\n");
+        return true_sendmsg(sockfd, msg, flags);
+    }
+
+    //Block unsupported sock
+    //WARNING: this block other unrelated network connect
+    if (sock_type == SOCK_STREAM) {
+        PDEBUG("sendmsg: allowing tcp sock stream\n");
+        return true_sendmsg(sockfd, msg, flags);
+    } else {
+        PDEBUG("sendmsg sock SOCK_STREAM = %d\n",SOCK_STREAM);
+        PDEBUG("sendmsg sock SOCK_DGRAM = %d\n",SOCK_DGRAM);
+        PDEBUG("sendmsg sock SOCK_SEQPACKET = %d\n",SOCK_SEQPACKET);
+        PDEBUG("sendmsg sock SOCK_RAW = %d\n",SOCK_RAW);
+        PDEBUG("sendmsg sock SOCK_RDM = %d\n",SOCK_RDM);
+        PDEBUG("sendmsg sock SOCK_PACKET = %d\n",SOCK_PACKET);
+        PDEBUG("-------------------------------------------------\n");
+        PDEBUG("sendmsg: sock %d\n",sock_type);
+        PDEBUG("-------------------------------------------------\n");
+    }
+    
+    /*if (((sock_type == SOCK_SEQPACKET) || (sock_type == SOCK_SEQPACKET)) && (!addr)) {
+        PDEBUG("sendmsg: allowing seqpacket stream\n");        
+        return true_sendmsg(sockfd, msg, flags);
+    }*/
+    
+    if (proxybound_allow_leak) {
+        PDEBUG("sendmsg: allow leak\n");
+        return true_sendmsg(sockfd, msg, flags);
+    } else {
+        if (addr) {
+            char ip[256];
+            struct in_addr *p_addr_in;        
+            p_addr_in = &((struct sockaddr_in *) addr)->sin_addr;
+            inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip)); 
+            if (strlen(ip) == 0) {PDEBUG("violation: sendmsg: rejecting null ip\n"); errno = EFAULT; return -1;}
+            PDEBUG("sendmsg: ip: %s\n",ip); 
+            
+            unsigned short port;
+            port = ntohs(((struct sockaddr_in *) addr)->sin_port);
+            if (port < 0) {PDEBUG("violation: sendmsg: rejecting null port\n"); errno = EFAULT; return -1;}
+            PDEBUG("sendmsg: port: %d\n", port);            
+            
+            //Allow local
+            if ((strlen(ip) != 0) && ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.'))) {
+                PDEBUG("sendmsg: allowing local 127.0.0.1\n");
+                return true_sendmsg(sockfd, msg, flags);
+            }
+            
+            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_sendmsg(sockfd, msg, flags);} 
+            
+            PDEBUG("sendmsg: rejecting c\n");
+            errno = EFAULT; return -1;
+        }
+        PDEBUG("sendmsg: rejecting d\n");
+        errno = EFAULT; return -1;
+    }
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) {  
     PDEBUG("sendto: got sendto request ----------------------\n");
     
-    struct sockaddr_in *connaddr;
+    if (true_sendto == NULL) {
+        PDEBUG("violation: sendto: rejecting, unresolved symbol: sendto\n");
+        errno = EFAULT; return -1;        
+    }    
+    
     int sock_type = -1;
     unsigned int sock_type_len = sizeof(sock_type);
+    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len); //get the type of the socket
     
-    /* If the real connect doesn't exist, we're stuffed */
-    if (true_sendto == NULL) {
-        PDEBUG("sendto: unresolved symbol: sendto\n");
-        return -1;        
+    if (!sock_type) {
+        PDEBUG("violation: sendto: allowing, no socket_type\n");
+        return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
     }
     
+    struct sockaddr_in *connaddr;
     connaddr = (struct sockaddr_in *) dest_addr;
     
     if (!connaddr) {
-        PDEBUG("sendto: no dest_addr, allowing\n");
+        PDEBUG("violation: sendto: null dest_addr\n");        
+        //send(sockfd, buf, len, flags) = sendto(sockfd, buf, len, flags, NULL, 0)
+        //send require connect on the first place... 
         return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
     }
     
-    if (connaddr->sin_family == AF_UNIX) {
-        PDEBUG("sendto: allowing unix\n");
+    if ((connaddr->sin_family != AF_INET) && (connaddr->sin_family != AF_INET6)) {
+        PDEBUG("sendto: allowing non inet socket\n");
         return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
     }
-
-    /* Get the type of the socket */
-    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
     
-    //SOCK_STREAM
-    //SOCK_DGRAM
-    //SOCK_SEQPACKET
-    //SOCK_RAW
-    //SOCK_RDM
-    //SOCK_PACKET
     //Block unsupported sock
-    //WARNING: this block other unrelated network connect 
-    if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
-        PDEBUG("sendto: is on a udp/unsupported stream\n");        
+    //WARNING: this block other unrelated network connect
+    if ((sock_type != SOCK_STREAM) && (!proxybound_allow_leak)) {    
+        PDEBUG("sendto: is on a udp/unsupported stream\n");     
+        PDEBUG("sendto: requested SOCK =%d\n",sock_type);
         char ip[256];
         struct in_addr *p_addr_in;
+        unsigned short port;
         p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
+        port = ntohs(((struct sockaddr_in *) connaddr)->sin_port);
         inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
+        
+        if (!connaddr->sin_family) {PDEBUG("violation: sendto: rejecting null sin_family\n"); errno = EFAULT; return -1;}
+        if (strlen(ip) == 0) {PDEBUG("violation: sendmsg: rejecting null ip\n"); errno = EFAULT; return -1;}
+        if (port < 0) {PDEBUG("violation: sendmsg: rejecting null port\n"); errno = EFAULT; return -1;}
+        
+        PDEBUG("sendto: requested SOCKFAMILY =%d\n",connaddr->sin_family);
         PDEBUG("sendto: ip: %s\n",ip);
+        PDEBUG("sendto: port: %d\n", port);
+        
+        PDEBUG("sendto: -----------------------------------------\n");        
         
         //Allow local
         if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
@@ -657,30 +750,24 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
         
         //Blocking the connection
         if (proxybound_allow_leak) {
-            PDEBUG("sendto: allowing direct udp sendto()\n"); 
+            PDEBUG("sendto: allowing udp/unsupported sendto()\n"); 
+             return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
         } else {
-            unsigned short port;
-            port = ntohs(((struct sockaddr_in *) connaddr)->sin_port);
-            if (!port) {PDEBUG("sendto: rejecting.\n"); return -1;}
-            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);} 
-            else {
-                PDEBUG("sendto: rejecting.\n");
-                return -1;
-            }
+            //if (port < 0) {PDEBUG("violation: sendto: rejecting null port\n"); errno = EFAULT; return -1;}
+            //if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);} 
             PDEBUG("sendto: rejecting.\n");
-            return -1; //Au cas ou
+            errno = EFAULT; return -1;
         }
     } else {
         return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-        //return (ssize_t) true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    }
+    }    
     
     if (proxybound_allow_leak) {
         return true_sendto(sockfd, buf, len, flags, *dest_addr, addrlen);
-    } else {
-        PDEBUG("sendto: rejecting.\n");
-        return -1;
-    }    
+    }
+    
+    PDEBUG("sendto: rejecting.\n");
+    errno = EFAULT; return -1;
 }
 
 ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
@@ -690,119 +777,42 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     
     /* If the real connect doesn't exist, we're stuffed */
     if (true_send == NULL) {
-        PDEBUG("send: unresolved symbol: send\n");
-        return -1;        
+        PDEBUG("violation: send: rejecting, unresolved symbol: send\n");
+        errno = EFAULT; return -1;        
     }
     
-    if (proxybound_allow_leak) {
+    //send require connect/sendto in the first place... 
+    return true_send(sockfd, buf, len, flags);
+    
+    /*if (proxybound_allow_leak) {
         PDEBUG("send: allowing direct send()\n"); 
         return true_send(sockfd, buf, len, flags);
-        //Already handled in connect ? 
-        //TODO deeper handling (socktype)
     } else {
         int sock_type = -1;
         unsigned int sock_type_len = sizeof(sock_type);
-
-        /* Get the type of the socket */
-        getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
+        getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len); //Get the type of the socket
         
-        //SOCK_STREAM
-        //SOCK_DGRAM
-        //SOCK_SEQPACKET
-        //SOCK_RAW
-        //SOCK_RDM
-        //SOCK_PACKET
-        //Block unsupported sock
-        //TODO may block dns here
-        //WARNING: this block other unrelated network connect
-        if (sock_type != SOCK_STREAM) {
-            PDEBUG("send: blocking send request type SOCK_DGRAM/SOCK_SEQPACKET/SOCK_RAW/SOCK_RDM/SOCK_PACKET\n");
-            return -1;
-        } else {
+        if (!sock_type) {
+            PDEBUG("violation: send: allowing empty sock_type send()\n");
             return true_send(sockfd, buf, len, flags);
-        }        
-        PDEBUG("send: blocking send request");
-        return -1;
-    }
-}
-    
-ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
-    PDEBUG("sendmsg: got sendmsg request --------------------\n");
-    
-    struct sockaddr_in *connaddr;
-    int sock_type = -1;
-    unsigned int sock_type_len = sizeof(sock_type);
-
-    /* If the real connect doesn't exist, we're stuffed */
-    if (true_sendmsg == NULL) {
-        PDEBUG("sendmsg: unresolved symbol: sendmsg\n");
-        return -1;
-    }
-    
-    connaddr = (struct sockaddr_in *) msg->msg_name;
-    
-    if (!connaddr) {
-        PDEBUG("sendmsg: no msg_name (dest), allowing\n");
-        return true_sendmsg(sockfd, msg, flags);
-    }
-    
-    if (connaddr->sin_family == AF_UNIX) {
-        PDEBUG("sendmsg: allowing unix\n");
-        return true_sendmsg(sockfd, msg, flags);
-    }
-    
-    /* Get the type of the socket */
-    getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (void *) &sock_type, &sock_type_len);
-
-    //SOCK_STREAM
-    //SOCK_DGRAM
-    //SOCK_SEQPACKET
-    //SOCK_RAW
-    //SOCK_RDM
-    //SOCK_PACKET
-    //Block unsupported sock
-    //WARNING: this block other unrelated network connect
-    if ((connaddr->sin_family != AF_INET) || (sock_type != SOCK_STREAM)) {
-        PDEBUG("sendmsg: is on a udp stream\n");
-       
-        char ip[256];
-        struct in_addr *p_addr_in;
-        
-        p_addr_in = &((struct sockaddr_in *) connaddr)->sin_addr;
-        inet_ntop(AF_INET, p_addr_in, ip, sizeof(ip));
- 
-        PDEBUG("sendmsg: ip: %s\n",ip);
-        
-        //Allow local
-        if ((ip[0] == '1') && (ip[1] == '2') && (ip[2] == '7') && (ip[3] == '.')) {
-            PDEBUG("sendmsg: allowing local 127.0.0.1\n");
-            return true_sendmsg(sockfd, msg, flags);
-        }
-
-        //Blocking the connection
-        if (proxybound_allow_leak) {
-            PDEBUG("sendmsg: allowing direct udp sendmsg()\n"); 
-        } else {
-            unsigned short port;
-            port = ntohs(((struct sockaddr_in *) connaddr)->sin_port);
-            if (!port) {PDEBUG("sendmsg: blocking\n"); return -1;}
-            if ((proxybound_allow_dns) && (is_dns_port(port))) {return true_sendmsg(sockfd, msg, flags);} 
-            else {PDEBUG("sendmsg: blocking\n"); return -1;}
-            PDEBUG("sendmsg: blocking\n");
-            return -1; //Au cas ou
         }
         
-    } else {
-        return true_sendmsg(sockfd, msg, flags);
-        //return (ssize_t) true_sendmsg(sockfd, msg, flags);
-    }
-    
-    if (proxybound_allow_leak) {
-        return true_sendmsg(sockfd, msg, flags);
-    } else {
-        PDEBUG("sendmsg: blocking\n");
-        return -1;
-    }
+        //SOCK_STREAM  SOCK_DGRAM  SOCK_SEQPACKET  SOCK_RAW  SOCK_RDM  SOCK_PACKET
+        if (sock_type == SOCK_STREAM) {return true_send(sockfd, buf, len, flags);}
+        
+        PDEBUG("send: sock SOCK_STREAM = %d\n",SOCK_STREAM);
+        PDEBUG("send: sock SOCK_DGRAM = %d\n",SOCK_DGRAM);
+        PDEBUG("send: sock SOCK_SEQPACKET = %d\n",SOCK_SEQPACKET);
+        PDEBUG("send: sock SOCK_RAW = %d\n",SOCK_RAW);
+        PDEBUG("send: sock SOCK_RDM = %d\n",SOCK_RDM);
+        PDEBUG("send: sock SOCK_PACKET = %d\n",SOCK_PACKET);
+        PDEBUG("-------------------------------------------------\n");
+        PDEBUG("send: sock %d\n",sock_type);
+        PDEBUG("-------------------------------------------------\n");
+        
+        PDEBUG("send: rejecting send request unsupported sock\n");
+        errno = EFAULT; return -1;
+    }*/
 }
 
 //TODO: DNS LEAK: OTHER RESOLVER FUNCTION
@@ -908,7 +918,6 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type) {
 	if(!proxybound_resolver)
 		return true_gethostbyaddr(addr, len, type);
 	else {
-
 		PDEBUG("hostent: len %u\n", len);
 		if(len != 4)
 			return NULL;
